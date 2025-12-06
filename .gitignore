@@ -1,0 +1,27 @@
+# --- C# / .NET (ビルド生成物) ---
+**/bin/
+**/obj/
+.vs/
+*.user
+*.suo
+*.pdb
+
+# --- Python (仮想環境・キャッシュ) ---
+__pycache__/
+*.pyc
+.env
+.venv/
+venv/
+env/
+
+# --- Revit / Project Specific (実行時に生成されるファイル) ---
+# これらは実行するたびに書き換わるため、Git管理から外します
+OutputFamilies/
+debug_log.txt
+params.json
+
+# --- Libraries (著作権・容量への配慮) ---
+# RevitAPI.dll などの製品DLLは再配布禁止の場合が多いため、Gitには上げないのが一般的です
+# 開発者は各自のPCに入っているRevitのDLLを参照するか、別途配置します
+lib/
+*.dll
