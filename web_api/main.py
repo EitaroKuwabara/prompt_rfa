@@ -1,114 +1,186 @@
 # web_api/main.py
 """
-Revit AI ServerのAPIを提供する
+メインアプリケーション
 """
-import os
+from datetime import datetime
 import json
-from fastapi import FastAPI
-from pydantic import BaseModel
-from openai import OpenAI, APIError
-from dotenv import load_dotenv
+import glob
+import os
+from openai import OpenAI
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 
-# .envファイルからAPIキーを読み込む
-load_dotenv()
+# 作成したモジュールをインポート
+import config
+from schemas import PromptRequest, GenerateRequest
+
+# ロジッククラスをインポート
+from logic.shelf import ShelfLogic
+
+from logic.desk import DeskLogic
 
 app = FastAPI()
 
-# OpenAIクライアントの初期化 (APIキーが必要です)
-# ※APIキーがない場合はエラーになります
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = OpenAI(api_key=config.OPENAI_API_KEY)
 
-
-# リクエストの定義
-class FamilyRequest(BaseModel):
-    """
-    ユーザーの入力「幅1000の机...」
-    """
-
-    text: str  # ユーザーの入力「幅1000の机...」
-
-
-# レスポンスの定義 (C#側と合わせる)
-class FamilyParameterResponse(BaseModel):
-    """
-    Revitファミリ作成用のパラメータ(JSON)
-    """
-
-    Width: float
-    Depth: float
-    Height: float
-    Name: str
-
-
-JSON_FILE_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(__file__)),
-    "params.json",
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
-@app.post("/generate_params", response_model=FamilyParameterResponse)
-async def generate_params(req: FamilyRequest):
+# --- ヘルパー関数: ロジックの選定 ---
+def get_logic(category: str):
     """
-    ユーザーのテキストからRevitファミリ作成用のパラメータ(JSON)を生成し、ファイルに保存してからレスポンスを返す
+    ロジックの選定
     """
-    try:
-        # AIへの指示（プロンプト）
-        system_prompt = """
-        あなたはRevitのファミリパラメータ設定アシスタントです。
-        ユーザーの要望から家具の寸法を推測し、以下のJSON形式で出力してください。
-        単位はミリメートル(mm)です。
-
-        出力フォーマット:
-        {
-            "Width": <数値>,
-            "Depth": <数値>,
-            "Height": <数値>,
-            "Name": "<短いファイル名>"
-        }
-
-        もしユーザーが具体的な寸法を指定しない場合は、一般的な家具のサイズを補完してください。
-        余計な説明は不要です。JSONのみを返してください。
-        """
-
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": req.text},
-            ],
-            response_format={"type": "json_object"},
-        )
-
-        # AIの返答を解析してパラメータを取得
-        content = response.choices[0].message.content
-        if content is None:
-            raise ValueError("AIの返答が空です")
-        data = json.loads(content)
-
-        with open(JSON_FILE_PATH, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=4)
-            print(f"パラメータをファイルに保存しました: {JSON_FILE_PATH}")
-
-        return data
-
-    except (ValueError, json.JSONDecodeError, APIError) as e:
-        print(f"Error: {e}")
-        # エラー時のフォールバック
-        fallback_data = {
-          "Width": 1000.0,
-          "Depth": 500.0,
-          "Height": 700.0,
-          "Name": "Error_Fallback",
-        }
-        with open(JSON_FILE_PATH, "w", encoding="utf-8") as f:
-            json.dump(fallback_data, f, indent=4)
-            print(f"パラメータをファイルに保存しました: {JSON_FILE_PATH}")
-        return fallback_data
+    if category.lower() == "shelf":
+        return ShelfLogic()
+    elif category.lower() == "desk":
+        return DeskLogic()
+    return None
 
 
 @app.get("/")
 def read_root():
     """
-    APIのルートエンドポイント
+    ルートエンドポイント
     """
-    return {"message": "Revit AI Server is running!"}
+    return {"message": "Archifields API (Refactored)"}
+
+
+@app.post("/suggest")
+def suggest_parameters(req: PromptRequest):
+    """
+    パラメータ提案
+    """
+    print(f"Analyzing prompt for {req.category}: {req.prompt}")
+
+    logic = get_logic(req.category)
+    if not logic:
+        raise HTTPException(status_code=400, detail="Unsupported category")
+
+    system_instruction = logic.get_system_instruction()
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": system_instruction},
+                {"role": "user", "content": req.prompt},
+            ],
+            response_format={"type": "json_object"},
+        )
+        content = response.choices[0].message.content
+        if content is None:
+            raise HTTPException(status_code=500, detail="No content received from AI")
+        if not isinstance(content, str):
+            raise HTTPException(status_code=500, detail="Content is not a string")
+        result_json = json.loads(content)
+        return result_json
+
+    except Exception as e:
+        print(f"Error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error: {str(e)}"
+        ) from e
+
+
+@app.post("/generate")
+def generate_family(req: GenerateRequest):
+    """
+    生成リクエスト
+    """
+    print(f"Generating JSON for Revit: {req.type}")
+
+    logic = get_logic(req.type)
+    if not logic:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported type: {req.type}",
+        )
+
+    # ロジッククラスを使ってC#用のデータに変換
+    specs_payload = logic.format_for_revit(req.params)
+
+    timestamp: str = datetime.now().strftime("%Y%m%d%H%M")
+    base_name: str = req.params.get("suggestedName", f"Generated{req.type}")
+    final_file_name: str = f"{base_name}_{timestamp}"
+
+    # 全体の構造を作成
+    data = {
+        "command": req.command,
+        "parameters": {
+            "familyName": final_file_name,
+            "category": "Furniture",
+            "type": req.type,
+            "specs": specs_payload,
+        },
+    }
+
+    try:
+        with open(config.JSON_PATH, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=4)
+        print(f"Saved to {config.JSON_PATH}")
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to write JSON: {str(e)}",
+        ) from e
+
+    return {
+        "status": "success",
+        "message": "Ready for Revit.",
+        "path": config.JSON_PATH,
+    }
+
+
+# プレビュー・ダウンロード系は変更なし（configのパスを使用）
+@app.get("/preview/latest")
+def preview_latest():
+    """
+    最新のプレビュー画像を取得
+    """
+    try:
+        list_of_files = glob.glob(os.path.join(config.OUTPUT_DIR, "*.png"))
+        if not list_of_files:
+            raise HTTPException(status_code=404, detail="No preview image found.")
+        latest_file = max(list_of_files, key=os.path.getmtime)
+        return FileResponse(latest_file)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get latest preview image: {str(e)}",
+        ) from e
+
+
+@app.get("/download/latest")
+def download_latest():
+    """
+    最新のRFAファイルをダウンロード
+    """
+    try:
+        list_of_files = glob.glob(os.path.join(config.OUTPUT_DIR, "*.rfa"))
+        if not list_of_files:
+            raise HTTPException(status_code=404, detail="No RFA files found.")
+        latest_file = max(list_of_files, key=os.path.getmtime)
+        filename = os.path.basename(latest_file)
+        return FileResponse(
+            path=latest_file, filename=filename, media_type="application/octet-stream"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to download latest RFA file: {str(e)}",
+        ) from e
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(app, host="0.0.0.0", port=8000)

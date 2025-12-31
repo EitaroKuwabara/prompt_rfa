@@ -1,48 +1,53 @@
-﻿// PromptRFA/App.cs
-using System;
-using Autodesk.Revit.ApplicationServices;
-using Autodesk.Revit.DB;
-using Autodesk.Revit.DB.Events;
+﻿using System;
+using System.Reflection;
+using Autodesk.Revit.UI;
 
 namespace PromptRFA
 {
-    public class App : IExternalDBApplication
+    // IExternalDBApplication ではなく IExternalApplication に変更
+    public class App : IExternalApplication
     {
-        public ExternalDBApplicationResult OnStartup(ControlledApplication app)
+        public Result OnStartup(UIControlledApplication application)
         {
             // ロガー初期化
             Logger.Initialize();
-            Logger.Write("OnStartup: アドインがロードされました。");
-            
-            // イベント登録
-            app.ApplicationInitialized += OnApplicationInitialized;
-            return ExternalDBApplicationResult.Succeeded;
-        }
+            Logger.Write("OnStartup: UIのロードを開始します。");
 
-        public ExternalDBApplicationResult OnShutdown(ControlledApplication app)
-        {
-            Logger.Write("OnShutdown: アドインが終了しました。");
-            app.ApplicationInitialized -= OnApplicationInitialized;
-            return ExternalDBApplicationResult.Succeeded;
-        }
-
-        private void OnApplicationInitialized(object sender, ApplicationInitializedEventArgs e)
-        {
-            Application app = sender as Application;
-            if (app == null) return;
-
-            Logger.Write("Event: Revit初期化完了。DeskProcessorを実行します。");
-
+            // 1. リボンタブの作成 ("PromptRFA" というタブが追加されます)
+            string tabName = "PromptRFA";
             try
             {
-                // 新しいクラスに処理を丸投げ
-                var processor = new DeskProcessor();
-                processor.Run(app);
+                application.CreateRibbonTab(tabName);
             }
-            catch (Exception ex)
-            {
-                Logger.Write($"Critical Error: {ex.Message}");
-            }
+            catch { /* 既にタブがある場合は無視 */ }
+
+            // 2. パネルの作成
+            RibbonPanel panel = application.CreateRibbonPanel(tabName, "AI Generation");
+
+            // 3. ボタンの作成
+            // このDLLファイルのパスを取得
+            string assemblyPath = Assembly.GetExecutingAssembly().Location;
+
+            // ボタンの設定 (表示名, コマンドのクラス名)
+            PushButtonData buttonData = new PushButtonData(
+                "btnGenerate",       // 内部ID
+                "Generate\nFurniture", // ボタンに表示されるテキスト
+                assemblyPath,        // DLLのパス
+                "PromptRFA.Command"  // 実行するクラス名 (Command.csのクラス)
+            );
+
+            // ツールチップ（マウスオーバー時の説明）
+            buttonData.ToolTip = "params.jsonを読み込んで家具ファミリを生成します。";
+
+            // パネルにボタンを追加
+            panel.AddItem(buttonData);
+
+            return Result.Succeeded;
+        }
+
+        public Result OnShutdown(UIControlledApplication application)
+        {
+            return Result.Succeeded;
         }
     }
 }

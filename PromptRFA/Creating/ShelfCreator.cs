@@ -1,0 +1,211 @@
+// PromptRFA/Creating/ShelfCreator.cs
+using System;
+using System.Collections.Generic;
+using Autodesk.Revit.DB;
+using Newtonsoft.Json.Linq;
+using PromptRFA.Models;
+
+namespace PromptRFA.Creating
+{
+    public class ShelfCreator : IFamilyCreator
+    {
+        public void Execute(Document doc, JObject specsJson)
+        {
+            ShelfSpecs? specs =
+                specsJson.ToObject<ShelfSpecs>();
+            FamilyManager famMgr = doc.FamilyManager;
+            using (
+                Transaction t = new Transaction(
+                    doc,
+                    "Create Advanced Shelf"
+                )
+            )
+            {
+                t.Start();
+
+                // 1. パラメータの準備
+                // それぞれの部位用に、ユーザーが変更可能なパラメータを作る
+                FamilyParameter pTopMat =
+                    EnsureMaterialParam(
+                        doc,
+                        "Top Material"
+                    );
+                FamilyParameter pSideMat =
+                    EnsureMaterialParam(
+                        doc,
+                        "Side Material"
+                    );
+                FamilyParameter pShelfMat =
+                    EnsureMaterialParam(
+                        doc,
+                        "Shelf Material"
+                    );
+
+                // (オプション: マテリアルが存在すればデフォルト値をセットする処理はここに記述)
+                // 今回は「紐付け」に集中します。
+
+                // 寸法変換
+                double width = specs!.Width / 304.8;
+                double depth = specs.Depth / 304.8;
+                double height = specs.Height / 304.8;
+                double thkTop = specs.TopThickness / 304.8;
+                double thkSide =
+                    specs.SideThickness / 304.8;
+                double thkShelf =
+                    specs.ShelfThickness / 304.8;
+
+                // 2. ジオメトリ作成と紐付け
+
+                // --- 天板 (Top) ---
+                Extrusion? topSolid = CreateBox(
+                    doc,
+                    width,
+                    depth,
+                    thkTop,
+                    0,
+                    0,
+                    height - thkTop
+                );
+                // ★ここで紐付け: 「このソリッドのマテリアル」は「Top Materialパラメータ」に従う
+                famMgr.AssociateElementParameterToFamilyParameter(
+                    topSolid!.get_Parameter(
+                        BuiltInParameter.MATERIAL_ID_PARAM
+                    ),
+                    pTopMat
+                );
+
+                // --- 側板 (Sides) ---
+                // 左
+                Extrusion? leftSolid = CreateBox(
+                    doc,
+                    thkSide,
+                    depth,
+                    height - thkTop,
+                    -width / 2 + thkSide / 2,
+                    0,
+                    0
+                );
+                famMgr.AssociateElementParameterToFamilyParameter(
+                    leftSolid!.get_Parameter(
+                        BuiltInParameter.MATERIAL_ID_PARAM
+                    ),
+                    pSideMat
+                );
+
+                // 右
+                Extrusion? rightSolid = CreateBox(
+                    doc,
+                    thkSide,
+                    depth,
+                    height - thkTop,
+                    width / 2 - thkSide / 2,
+                    0,
+                    0
+                );
+                famMgr.AssociateElementParameterToFamilyParameter(
+                    rightSolid!.get_Parameter(
+                        BuiltInParameter.MATERIAL_ID_PARAM
+                    ),
+                    pSideMat
+                ); // 左右ともに同じ側板用パラメータを紐付ける
+
+                // --- 棚板 (Shelves) ---
+                double effectiveH = height - thkTop;
+                double? spacing =
+                    effectiveH / (specs.ShelfCount + 1);
+
+                for (int i = 1; i <= specs.ShelfCount; i++)
+                {
+                    double? z = i * spacing;
+                    Extrusion? shelfSolid = CreateBox(
+                        doc,
+                        width - (thkSide * 2),
+                        depth,
+                        thkShelf,
+                        0,
+                        0,
+                        z!.Value
+                    );
+
+                    // 棚板用パラメータを紐付け
+                    famMgr.AssociateElementParameterToFamilyParameter(
+                        shelfSolid!.get_Parameter(
+                            BuiltInParameter.MATERIAL_ID_PARAM
+                        ),
+                        pShelfMat
+                    );
+                }
+
+                t.Commit();
+            }
+        }
+
+        // マテリアルパラメータが存在するか確認し、なければ作るヘルパー
+        private FamilyParameter EnsureMaterialParam(
+            Document doc,
+            string paramName
+        )
+        {
+            FamilyManager mgr = doc.FamilyManager;
+            FamilyParameter param = mgr.get_Parameter(
+                paramName
+            );
+            if (param == null)
+            {
+                // 新規作成: マテリアル型のインスタンスパラメータとして作成
+                // ※Revit 2025などのバージョンにより引数が異なる場合がありますが、基本は以下
+                param = mgr.AddParameter(
+                    paramName,
+                    GroupTypeId.Materials,
+                    SpecTypeId.Reference.Material,
+                    false
+                );
+            }
+            return param;
+        }
+
+        // Extrusion (実体) を返すように変更
+        private Extrusion? CreateBox(
+            Document doc,
+            double w,
+            double d,
+            double h,
+            double cx,
+            double cy,
+            double bz
+        )
+        {
+            CurveArray curveArray = new CurveArray();
+            XYZ p1 = new XYZ(cx - w / 2, cy - d / 2, bz);
+            XYZ p2 = new XYZ(cx + w / 2, cy - d / 2, bz);
+            XYZ p3 = new XYZ(cx + w / 2, cy + d / 2, bz);
+            XYZ p4 = new XYZ(cx - w / 2, cy + d / 2, bz);
+
+            curveArray.Append(Line.CreateBound(p1, p2));
+            curveArray.Append(Line.CreateBound(p2, p3));
+            curveArray.Append(Line.CreateBound(p3, p4));
+            curveArray.Append(Line.CreateBound(p4, p1));
+
+            CurveArrArray curveArrArray =
+                new CurveArrArray();
+            curveArrArray.Append(curveArray);
+
+            if (doc.IsFamilyDocument)
+            {
+                Plane plane = Plane.CreateByNormalAndOrigin(
+                    XYZ.BasisZ,
+                    new XYZ(0, 0, bz)
+                );
+                SketchPlane sketchPlane =
+                    SketchPlane.Create(doc, plane);
+                return doc.FamilyCreate.NewExtrusion(
+                    true,
+                    curveArrArray,
+                    sketchPlane,
+                    h
+                );
+            }
+            return null;
+        }
+    }
+}
