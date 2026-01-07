@@ -15,13 +15,14 @@ export function useFamilyGenerator<T extends BaseParams>(
   const [prompt, setPrompt] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
   // AI提案ロジック
   const handleSuggest = async (category: string) => {
     if (!prompt) return;
     setIsAnalyzing(true);
     try {
-      const res = await fetch("http://localhost:8000/suggest", {
+      const res = await fetch(`${API_BASE}/suggest`, {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({prompt, category}),
@@ -54,7 +55,7 @@ export function useFamilyGenerator<T extends BaseParams>(
     setIsGenerating(true);
     try {
       // 完了するまでここで待機します (クラウド処理の時間分待ちます)
-      const res = await fetch("http://localhost:8000/generate", {
+      const res = await fetch(`${API_BASE}/generate`, {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({
