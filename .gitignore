@@ -25,3 +25,4 @@ params.json
 # 開発者は各自のPCに入っているRevitのDLLを参照するか、別途配置します
 lib/
 *.dll
+!archifields/lib/
