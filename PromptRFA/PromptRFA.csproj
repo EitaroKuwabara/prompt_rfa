@@ -27,5 +27,9 @@
       Include="Newtonsoft.Json"
       Version="13.0.4"
     />
+    <PackageReference
+      Include="Autodesk.Forge.DesignAutomation.Revit"
+      Version="2025.0.1"
+    />
   </ItemGroup>
 </Project>

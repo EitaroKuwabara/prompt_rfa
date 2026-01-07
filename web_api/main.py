@@ -2,7 +2,6 @@
 """
 メインアプリケーション
 """
-from datetime import datetime
 import json
 import glob
 import os
@@ -10,6 +9,7 @@ from openai import OpenAI
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+import aps_utils
 
 # 作成したモジュールをインポート
 import config
@@ -32,6 +32,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+# class GenRequest(BaseModel):
+#     """
+#     リクエストボディの定義
+#     """
+#     category: str
+#     text_prompt: str
+#     parameters: Dict[str, Any] = {}
+
+TEMP_DIR = "temp"
+os.makedirs(
+    TEMP_DIR,
+    exist_ok=True,
+)
 
 # --- ヘルパー関数: ロジックの選定 ---
 def get_logic(category: str):
@@ -96,48 +110,63 @@ def generate_family(req: GenerateRequest):
     """
     生成リクエスト
     """
-    print(f"Generating JSON for Revit: {req.type}")
-
-    logic = get_logic(req.type)
-    if not logic:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported type: {req.type}",
-        )
-
-    # ロジッククラスを使ってC#用のデータに変換
-    specs_payload = logic.format_for_revit(req.params)
-
-    timestamp: str = datetime.now().strftime("%Y%m%d%H%M")
-    base_name: str = req.params.get("suggestedName", f"Generated{req.type}")
-    final_file_name: str = f"{base_name}_{timestamp}"
-
-    # 全体の構造を作成
-    data = {
-        "command": req.command,
-        "parameters": {
-            "familyName": final_file_name,
-            "category": "Furniture",
-            "type": req.type,
-            "specs": specs_payload,
-        },
-    }
-
     try:
+        print(f"Received request: {req.type}")
+        # specs: dict[str, Any] = {}
+
+        logic = get_logic(req.type)
+        if not logic:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported type: {req.type}",
+            )
+
+        # ロジッククラスを使ってC#用のデータに変換
+        specs_payload = logic.format_for_revit(req.params)
+
+        final_file_name: str = "output"
+
+        # 全体の構造を作成
+        data = {
+            "command": req.command,
+            "parameters": {
+                "familyName": final_file_name,
+                "category": "Furniture",
+                "type": req.type,
+                "specs": specs_payload,
+            },
+        }
+
         with open(config.JSON_PATH, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=4)
         print(f"Saved to {config.JSON_PATH}")
+
+        # テンプレートのファイルのパス
+        template_path = "Metric Generic Model.rft"
+        if not os.path.exists(template_path):
+            raise HTTPException(
+                status_code=500, detail="Template file not found on server."
+            )
+
+        output_rfa = os.path.join(TEMP_DIR, "output_family.rfa")
+
+        aps_utils.run_gen_on_cloud(
+            config.JSON_PATH,
+            template_path,
+            output_rfa,
+        )
+
+        return FileResponse(
+            path=output_rfa,
+            filename=f"{req.type}_CloudGen.rfa",
+            media_type="application/octet-stream",
+        )
+
     except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to write JSON: {str(e)}",
-        ) from e
-
-    return {
-        "status": "success",
-        "message": "Ready for Revit.",
-        "path": config.JSON_PATH,
-    }
+                status_code=500,
+                detail=f"Failed to write JSON: {str(e)}",
+            ) from e
 
 
 # プレビュー・ダウンロード系は変更なし（configのパスを使用）

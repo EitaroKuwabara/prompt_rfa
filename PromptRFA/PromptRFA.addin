@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+  <AddIn Type="DBApplication">
+    <Name>PromptRFA</Name>
+    <Assembly>PromptRFA.dll</Assembly>
+    <AddInId>D8F3A2B1-4E6C-49D2-87A5-9C3E1F0B5D7A</AddInId>
+    <FullClassName>PromptRFA.App</FullClassName>
+    <VendorId>Archifields</VendorId>
+    <VendorDescription>Archifields</VendorDescription>
+  </AddIn>
+</RevitAddIns>

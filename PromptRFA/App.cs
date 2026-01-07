@@ -1,53 +1,60 @@
-﻿using System;
-using System.Reflection;
-using Autodesk.Revit.UI;
+﻿// App.cs
+using System;
+using Autodesk.Revit.ApplicationServices;
+using Autodesk.Revit.DB;
+using DesignAutomationFramework;
 
 namespace PromptRFA
 {
-    // IExternalDBApplication ではなく IExternalApplication に変更
-    public class App : IExternalApplication
+    // ★変更点: IExternalApplication (UI用) ではなく IExternalDBApplication (DB用) にする
+    public class App : IExternalDBApplication
     {
-        public Result OnStartup(UIControlledApplication application)
+        public ExternalDBApplicationResult OnStartup(
+            ControlledApplication application
+        )
         {
-            // ロガー初期化
-            Logger.Initialize();
-            Logger.Write("OnStartup: UIのロードを開始します。");
-
-            // 1. リボンタブの作成 ("PromptRFA" というタブが追加されます)
-            string tabName = "PromptRFA";
-            try
-            {
-                application.CreateRibbonTab(tabName);
-            }
-            catch { /* 既にタブがある場合は無視 */ }
-
-            // 2. パネルの作成
-            RibbonPanel panel = application.CreateRibbonPanel(tabName, "AI Generation");
-
-            // 3. ボタンの作成
-            // このDLLファイルのパスを取得
-            string assemblyPath = Assembly.GetExecutingAssembly().Location;
-
-            // ボタンの設定 (表示名, コマンドのクラス名)
-            PushButtonData buttonData = new PushButtonData(
-                "btnGenerate",       // 内部ID
-                "Generate\nFurniture", // ボタンに表示されるテキスト
-                assemblyPath,        // DLLのパス
-                "PromptRFA.Command"  // 実行するクラス名 (Command.csのクラス)
-            );
-
-            // ツールチップ（マウスオーバー時の説明）
-            buttonData.ToolTip = "params.jsonを読み込んで家具ファミリを生成します。";
-
-            // パネルにボタンを追加
-            panel.AddItem(buttonData);
-
-            return Result.Succeeded;
+            // Design Automationの準備完了イベントに登録
+            DesignAutomationBridge.DesignAutomationReadyEvent +=
+                HandleDesignAutomationReadyEvent!;
+            return ExternalDBApplicationResult.Succeeded;
         }
 
-        public Result OnShutdown(UIControlledApplication application)
+        public ExternalDBApplicationResult OnShutdown(
+            ControlledApplication application
+        )
         {
-            return Result.Succeeded;
+            // イベント登録解除
+            DesignAutomationBridge.DesignAutomationReadyEvent -=
+                HandleDesignAutomationReadyEvent!;
+            return ExternalDBApplicationResult.Succeeded;
+        }
+
+        // ★ここがクラウドでの「メイン関数」になります
+        public void HandleDesignAutomationReadyEvent(
+            object sender,
+            DesignAutomationReadyEventArgs e
+        )
+        {
+            try
+            {
+                // ここで実際の処理を行う (FamilyProcessorを呼び出す)
+                // e.DesignAutomationData.RevitApp で Application オブジェクトが取れます
+                new FamilyProcessor().Run(
+                    e.DesignAutomationData.RevitApp
+                );
+
+                // 成功を通知
+                e.Succeeded = true;
+            }
+            catch (Exception ex)
+            {
+                // クラウド上のログに出力される
+                Console.WriteLine(
+                    "Exception in HandleDesignAutomationReadyEvent: "
+                        + ex.Message
+                );
+                e.Succeeded = false;
+            }
         }
     }
 }

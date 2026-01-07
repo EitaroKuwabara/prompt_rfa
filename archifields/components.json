@@ -1,17 +1,17 @@
 {
     "command": "create",
     "parameters": {
-        "familyName": "ExecutiveMahoganyDesk_202512311046",
+        "familyName": "output",
         "category": "Furniture",
         "type": "Desk",
         "specs": {
-            "Width": 1800,
-            "Depth": 900,
-            "Height": 750,
+            "Width": 1600,
+            "Depth": 800,
+            "Height": 720,
             "TopThickness": 30,
             "LegWidth": 50,
-            "TopMaterialName": "Mahogany",
-            "LegMaterialName": "Mahogany",
+            "TopMaterialName": "Wood",
+            "LegMaterialName": "Steel",
             "HasDrawers": true
         }
     }

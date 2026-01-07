@@ -1,13 +1,13 @@
 // archifields/components/generators/DeskGenerator.tsx
 "use client";
 
-import {useState} from "react";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {Textarea} from "@/components/ui/textarea";
 import {Card, CardContent} from "@/components/ui/card";
 import {Loader2} from "lucide-react";
+import {useFamilyGenerator} from "@/hooks/useFamilyGenerator";
 
 // 親コンポーネント(page.tsx)から受け取る関数の型定義
 interface DeskGeneratorProps {
@@ -19,23 +19,27 @@ interface DeskParams {
   width: number;
   depth: number;
   height: number;
-
   topThickness: number;
   legWidth: number;
-
   topMaterialName: string;
   legMaterialName: string;
-
   hasDrawers: boolean;
+  [key: string]: string | number | boolean;
 }
 
 export function DeskGenerator({onSuccess}: DeskGeneratorProps) {
-  const [prompt, setPrompt] = useState("");
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
-
-  // 初期値の設定 (一般的な机のサイズ)
-  const [params, setParams] = useState<DeskParams>({
+  const {
+    params,
+    prompt,
+    setPrompt,
+    isAnalyzing,
+    isGenerating,
+    handleSuggest,
+    handleGenerate,
+    handleChange,
+    handleStringChange,
+    handleCheckboxChange,
+  } = useFamilyGenerator<DeskParams>({
     width: 1200,
     depth: 700,
     height: 700,
@@ -44,95 +48,10 @@ export function DeskGenerator({onSuccess}: DeskGeneratorProps) {
     topMaterialName: "Wood",
     legMaterialName: "Steel",
     hasDrawers: false,
-  });
-
-  // AI提案ロジック
-  const handleSuggest = async () => {
-    if (!prompt) return;
-    setIsAnalyzing(true);
-    try {
-      // category: "desk" でリクエスト
-      const res = await fetch("http://localhost:8000/suggest", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({prompt, category: "desk"}),
-      });
-      if (!res.ok) throw new Error("Suggestion failed");
-
-      const data = await res.json();
-
-      // AIからの提案を適用
-      setParams((prev) => ({
-        ...prev,
-        ...data,
-        // 数値変換の安全策
-        width: Number(data.width || prev.width),
-        depth: Number(data.depth || prev.depth),
-        height: Number(data.height || prev.height),
-      }));
-    } catch (error) {
-      console.error(error);
-      alert("AI提案に失敗しました");
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
-  // 生成ロジック
-  const handleGenerate = async () => {
-    setIsGenerating(true);
-    try {
-      // type: "Desk" でリクエスト
-      const res = await fetch("http://localhost:8000/generate", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-          command: "create",
-          type: "Desk",
-          params: params,
-        }),
-      });
-      if (!res.ok) throw new Error("Generation failed");
-
-      // Revit操作を促すアラート
-      alert(
-        "設定データを保存しました。\n\nRevitに切り替えて、アドインを実行してください。\n実行が完了したら、この画面に戻って「OK」を押してください。"
-      );
-
-      // 親コンポーネントに通知してプレビュー更新
-      onSuccess();
-    } catch (error) {
-      console.error(error);
-      alert("生成リクエストに失敗しました");
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  // 汎用ハンドラ (数値)
-  const handleChange = (key: keyof DeskParams, value: string) => {
-    const numVal = parseFloat(value);
-    setParams((prev) => ({
-      ...prev,
-      [key]: isNaN(numVal) ? 0 : numVal,
-    }));
-  };
-
-  // 汎用ハンドラ (文字列)
-  const handleStringChange = (key: keyof DeskParams, value: string) => {
-    setParams((prev) => ({
-      ...prev,
-      [key]: value || "",
-    }));
-  };
-
-  // トグルハンドラ (Boolean)
-  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setParams((prev) => ({
-      ...prev,
-      hasDrawers: e.target.checked,
-    }));
-  };
+  },
+  "Desk",
+  onSuccess
+);
 
   return (
     <div className="space-y-6">
@@ -147,7 +66,7 @@ export function DeskGenerator({onSuccess}: DeskGeneratorProps) {
               rows={3}
             />
             <Button
-              onClick={handleSuggest}
+              onClick={() => handleSuggest("Desk")}
               disabled={isAnalyzing || !prompt}
               variant="secondary"
               className="w-full"
@@ -246,7 +165,7 @@ export function DeskGenerator({onSuccess}: DeskGeneratorProps) {
               id="hasDrawers"
               className="h-4 w-4 rounded border-gray-300 text-slate-900 focus:ring-slate-900"
               checked={params.hasDrawers}
-              onChange={handleCheckboxChange}
+              onChange={(e) => handleCheckboxChange("hasDrawers", e.target.checked)}
             />
             <Label htmlFor="hasDrawers" className="cursor-pointer">
               引き出しを付ける (簡易形状)
@@ -262,7 +181,7 @@ export function DeskGenerator({onSuccess}: DeskGeneratorProps) {
           {isGenerating ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
-            "設定を保存 (Revitへ)"
+            "Revitファミリを生成"
           )}
         </Button>
       </div>

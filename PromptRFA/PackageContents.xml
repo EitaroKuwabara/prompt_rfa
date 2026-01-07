@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ApplicationPackage
+  SchemaVersion="1.0"
+  Name="PromptRFA"
+  AppVersion="1.0.0"
+  ProductType="Application"
+  Description="Prompt-based RFA generator"
+>
+  <CompanyDetails Name="Archifields" />
+  <Components>
+    <RuntimeRequirements
+      OS="Win64"
+      Platform="Revit"
+      SeriesMin="R2025"
+      SeriesMax="R2025"
+    />
+    <ComponentEntry
+      AppName="PromptRFA"
+      Version="1.0.0"
+      ModuleName="./Contents/2025/PromptRFA.addin"
+    />
+  </Components>
+</ApplicationPackage>

@@ -1,6 +1,6 @@
 using System.IO;
+using System.Reflection;
 using Autodesk.Revit.DB;
-using Autodesk.Revit.UI;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using PromptRFA.Creating;
@@ -10,40 +10,30 @@ namespace PromptRFA
 {
     public class FamilyProcessor
     {
-        // Command.cs から呼ばれるメインメソッド
         public void Run(
             Autodesk.Revit.ApplicationServices.Application app
         )
         {
-            // 1. ファイルパスの設定
-            string projectRoot =
-                @"C:\Users\81805\StudioProjects\prompt_rfa";
-            string jsonPath = Path.Combine(
-                projectRoot,
-                @"archifields\components.json"
+            Console.WriteLine(
+                "--- Start Family Processing (Cloud) ---"
             );
-            string outputFolder = Path.Combine(
-                projectRoot,
-                @"PromptRFA\OutputFamilies"
+
+            // 1. パス設定
+            // JSONは「入力ファイル」としてクラウドのカレントディレクトリに置かれます
+            string jsonPath = "components.json";
+
+            // テンプレートは「AppBundle(ZIP)」に入れたものを探します（DLLと同じ場所）
+            string? assemblyPath = Path.GetDirectoryName(
+                Assembly.GetExecutingAssembly().Location
             );
-            string templatePath =
-                @"C:\ProgramData\Autodesk\RVT 2025\Family Templates\English\Metric Generic Model.rft";
+            string templatePath = Path.Combine(
+                assemblyPath!,
+                "Metric Generic Model.rft"
+            );
 
-            // フォルダ作成
-            if (!Directory.Exists(outputFolder))
-                Directory.CreateDirectory(outputFolder);
+            // string targetFileName = "output";
 
-            // テンプレート確認
-            if (!File.Exists(templatePath))
-            {
-                throw new FileNotFoundException(
-                    "ファミリテンプレートが見つかりません: "
-                        + templatePath
-                );
-            }
-
-            // 2. ここで先にJSONを読み込んで、ファイル名(targetFileName)を決定する
-            string targetFileName = "GeneratedShelf"; // デフォルト値
+            // 2. JSON読み込み
             if (File.Exists(jsonPath))
             {
                 try
@@ -55,8 +45,6 @@ namespace PromptRFA
                         JsonConvert.DeserializeObject<RootObject>(
                             jsonContent
                         );
-
-                    // JSONに名前があればそれを使う
                     if (
                         root != null
                         && root.parameters != null
@@ -65,65 +53,89 @@ namespace PromptRFA
                         )
                     )
                     {
-                        targetFileName =
-                            root.parameters.familyName;
+                        // 生成時のファイル名としては使うが、保存は output.rfa 固定にする
+                        Console.WriteLine(
+                            $"Parameter FamilyName: {root.parameters.familyName}"
+                        );
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // 読み込み失敗時はデフォルト名のまま進める
+                    Console.WriteLine(
+                        $"JSON Read Error: {ex.Message}"
+                    );
+                }
+            }
+            else
+            {
+                Console.WriteLine(
+                    "Error: components.json not found in current directory."
+                );
+                return;
+            }
+
+            // 3. テンプレート確認
+            if (!File.Exists(templatePath))
+            {
+                Console.WriteLine(
+                    $"Error: Template not found at {templatePath}"
+                );
+                // 万が一見つからない場合、カレントディレクトリも探してみる
+                templatePath = "Metric Generic Model.rft";
+                if (!File.Exists(templatePath))
+                {
+                    Console.WriteLine(
+                        "Error: Template not found in current directory either."
+                    );
+                    return;
                 }
             }
 
-            TaskDialog.Show(
-                "Debug Check",
-                "読み込んだファイル名: " + targetFileName
-            );
-
-            // 3. 新規ファミリドキュメント作成
+            // 4. 新規ファミリ作成
             Document familyDoc = app.NewFamilyDocument(
                 templatePath
             );
 
             try
             {
-                // 4. ファミリ生成ロジックを実行
                 CreateFamilyFromJSON(familyDoc, jsonPath);
 
-                // 5. 決定したファイル名で保存
-                string outputPath = Path.Combine(
-                    outputFolder,
-                    targetFileName + ".rfa"
-                );
+                // 5. 保存 (クラウドが指定する "output.rfa" という名前で保存必須)
+                // ※setup_aps.py で output.rfa を持ち帰る設定にしているため
+                string rfaName = "output.rfa";
 
                 SaveAsOptions opt = new SaveAsOptions
                 {
                     OverwriteExistingFile = true,
+                    Compact = true,
                 };
-                familyDoc.SaveAs(outputPath, opt);
+                familyDoc.SaveAs(rfaName, opt);
+                Console.WriteLine($"Saved RFA: {rfaName}");
 
-                // 6. 同じ名前でプレビュー画像も保存
+                // 6. 画像 (オプション)
                 ExportPreviewImage(
                     familyDoc,
-                    outputFolder,
-                    targetFileName
+                    "preview.png"
                 );
 
-                // 閉じる
                 familyDoc.Close(false);
+                Console.WriteLine(
+                    "--- Finished Successfully ---"
+                );
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Console.WriteLine(
+                    $"Critical Error: {ex.Message}"
+                );
                 familyDoc.Close(false);
                 throw;
             }
         }
 
-        // プレビュー画像のエクスポート
         private void ExportPreviewImage(
             Document doc,
-            string folder,
-            string baseName
+            string filePath
         )
         {
             try
@@ -141,10 +153,7 @@ namespace PromptRFA
                     {
                         ZoomType = ZoomFitType.FitToPage,
                         PixelSize = 1024,
-                        FilePath = Path.Combine(
-                            folder,
-                            baseName
-                        ),
+                        FilePath = filePath,
                         FitDirection =
                             FitDirectionType.Horizontal,
                         HLRandWFViewsFileType =
@@ -160,15 +169,11 @@ namespace PromptRFA
                     doc.ExportImage(imgOpt);
                 }
             }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine(
-                    "画像エクスポート失敗: " + ex.Message
-                );
+            catch
+            { /* 無視 */
             }
         }
 
-        // 実際の生成処理
         public void CreateFamilyFromJSON(
             Document doc,
             string jsonPath
@@ -177,7 +182,6 @@ namespace PromptRFA
             if (!File.Exists(jsonPath))
                 return;
             string jsonContent = File.ReadAllText(jsonPath);
-
             RootObject? root =
                 JsonConvert.DeserializeObject<RootObject>(
                     jsonContent
@@ -186,26 +190,16 @@ namespace PromptRFA
                 return;
 
             string? type = root.parameters.type;
-            if (string.IsNullOrEmpty(type))
-                return;
-
+            JObject? specsJson =
+                root.parameters.specs as JObject;
             IFamilyCreator? creator = null;
 
-            switch (type.ToLower())
-            {
-                case "shelf":
-                    creator = new ShelfCreator();
-                    break;
-                case "desk":
-                    creator = new DeskCreator();
-                    break;
-            }
+            if (type?.ToLower() == "shelf")
+                creator = new ShelfCreator();
+            else if (type?.ToLower() == "desk")
+                creator = new DeskCreator();
 
-            if (
-                creator != null
-                && root.parameters.specs
-                    is JObject specsJson
-            )
+            if (creator != null && specsJson != null)
             {
                 creator.Execute(doc, specsJson);
             }

@@ -1,12 +1,12 @@
 "use client";
 
-import {useState} from "react";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {Textarea} from "@/components/ui/textarea";
 import {Card, CardContent} from "@/components/ui/card";
 import {Loader2} from "lucide-react";
+import {useFamilyGenerator} from "@/hooks/useFamilyGenerator";
 
 // 親コンポーネント(page.tsx)から受け取る関数の型定義
 interface ShelfGeneratorProps {
@@ -25,100 +25,38 @@ interface ShelfParams {
   sideMaterialName: string;
   shelfMaterialName: string;
   shelfCount: number;
+  [key: string]: string | number | boolean;
 }
 
 // props として { onSuccess } を受け取るように変更
 export function ShelfGenerator({onSuccess}: ShelfGeneratorProps) {
-  const [prompt, setPrompt] = useState("");
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const {
+    params,
+    prompt,
+    setPrompt,
+    isAnalyzing,
+    isGenerating,
+    handleSuggest,
+    handleGenerate,
+    handleChange,
+    handleStringChange,
+  } = useFamilyGenerator<ShelfParams>(
+    {
+      width: 800,
+      depth: 300,
+      height: 1800,
+      topThickness: 30,
+      sideThickness: 30,
+      shelfThickness: 20,
+      topMaterialName: "Wood",
+      sideMaterialName: "Wood",
+      shelfMaterialName: "Wood",
+      shelfCount: 4,
+    },
+    "Shelf",
+    onSuccess
+  );
 
-  // 初期値の設定
-  const [params, setParams] = useState<ShelfParams>({
-    width: 800,
-    depth: 300,
-    height: 1800,
-    topThickness: 30,
-    sideThickness: 30,
-    shelfThickness: 20,
-    topMaterialName: "Wood",
-    sideMaterialName: "Wood",
-    shelfMaterialName: "Wood",
-    shelfCount: 4,
-  });
-
-  // AI提案ロジック
-  const handleSuggest = async () => {
-    if (!prompt) return;
-    setIsAnalyzing(true);
-    try {
-      const res = await fetch("http://localhost:8000/suggest", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({prompt, category: "shelf"}),
-      });
-      if (!res.ok) throw new Error("Suggestion failed");
-
-      const data = await res.json();
-      setParams((prev) => ({
-        ...prev,
-        ...data,
-        width: Number(data.width || prev.width),
-        depth: Number(data.depth || prev.depth),
-        height: Number(data.height || prev.height),
-      }));
-    } catch (error) {
-      console.error(error);
-      alert("AI提案に失敗しました");
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
-  // 生成ロジック
-  const handleGenerate = async () => {
-    setIsGenerating(true);
-    try {
-      const res = await fetch("http://localhost:8000/generate", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-          command: "create",
-          type: "Shelf",
-          params: params,
-        }),
-      });
-      if (!res.ok) throw new Error("Generation failed");
-      alert(
-        "設定データを保存しました。\n\nRevitに切り替えて、アドインを実行してください。\n実行が完了したら、この画面に戻って「OK」を押してください。"
-      );
-
-      // アラートのOKが押された後、親コンポーネントに通知してプレビュー画像を更新
-      onSuccess();
-    } catch (error) {
-      console.error(error);
-      alert("生成リクエストに失敗しました");
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const handleChange = (key: keyof ShelfParams, value: string) => {
-    const numVal = parseFloat(value);
-    setParams((prev) => ({
-      ...prev,
-      [key]: isNaN(numVal) ? 0 : numVal,
-    }));
-  };
-
-  const handleStringChange = (key: keyof ShelfParams, value: string) => {
-    setParams((prev) => ({
-      ...prev,
-      [key]: value || "",
-    }));
-  };
-
-  // 左右のカラム分け（grid）を削除し、純粋な入力フォームのみを返す
   return (
     <div className="space-y-6">
       <Card>
@@ -132,7 +70,7 @@ export function ShelfGenerator({onSuccess}: ShelfGeneratorProps) {
               rows={3}
             />
             <Button
-              onClick={handleSuggest}
+              onClick={() => handleSuggest("Shelf")}
               disabled={isAnalyzing || !prompt}
               variant="secondary"
               className="w-full"
