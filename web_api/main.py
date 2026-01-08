@@ -26,20 +26,11 @@ client = OpenAI(api_key=config.OPENAI_API_KEY)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-# class GenRequest(BaseModel):
-#     """
-#     リクエストボディの定義
-#     """
-#     category: str
-#     text_prompt: str
-#     parameters: Dict[str, Any] = {}
 
 TEMP_DIR = "temp"
 os.makedirs(
