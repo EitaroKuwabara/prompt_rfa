@@ -15,7 +15,7 @@ export function useFamilyGenerator<T extends BaseParams>(
   const [prompt, setPrompt] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
   // AI提案ロジック
   const handleSuggest = async (category: string) => {
