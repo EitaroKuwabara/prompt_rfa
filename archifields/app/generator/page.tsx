@@ -11,13 +11,15 @@ import {ShelfGenerator} from "@/components/generators/ShelfGenerator";
 export default function GeneratorPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
   const handleGenerateSuccess = () => {
-    setPreviewUrl(`http://localhost:8000/preview/latest?t=${Date.now()}`);
+    setPreviewUrl(`${API_BASE}/preview/latest?t=${Date.now()}`);
   };
 
   const handleDownload = () => {
     const timestamp = Date.now();
-    window.open(`http://localhost:8000/download/latest?t=${timestamp}`, "_blank");
+    window.open(`${API_BASE}/download/latest?t=${timestamp}`, "_blank");
   };
 
   return (
