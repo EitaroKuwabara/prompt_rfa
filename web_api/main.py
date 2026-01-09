@@ -215,22 +215,29 @@ def generate_family(req: GenerateRequest):
             ) from e
 
 
-# プレビュー・ダウンロード系は変更なし（configのパスを使用）
+# プレビュー・ダウンロード系は変更なし
 @app.get("/preview/latest")
 def preview_latest():
     """
     最新のプレビュー画像を取得
     """
+    # 1. まずファイルがあるか確認（tryの外に出す）
+    list_of_files = glob.glob(os.path.join(config.OUTPUT_DIR, "*.png"))
+
+    if not list_of_files:
+        # 画像がない場合は、静かに404を返す（500エラーにしない）
+        # フロントエンド側で「プレビューなし」として扱えるようになります
+        raise HTTPException(status_code=404, detail="No preview image found.")
+
+    # 2. ファイルがある場合のみ取得
     try:
-        list_of_files = glob.glob(os.path.join(config.OUTPUT_DIR, "*.png"))
-        if not list_of_files:
-            raise HTTPException(status_code=404, detail="No preview image found.")
         latest_file = max(list_of_files, key=os.path.getmtime)
         return FileResponse(latest_file)
     except Exception as e:
+        print(f"Error serving preview: {e}")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to get latest preview image: {str(e)}",
+            detail="Internal Server Error",
         ) from e
 
 
