@@ -5,6 +5,8 @@
 import json
 import glob
 import os
+import shutil
+import time
 from openai import OpenAI
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -103,7 +105,6 @@ def generate_family(req: GenerateRequest):
     """
     try:
         print(f"Received request: {req.type}")
-        # specs: dict[str, Any] = {}
 
         logic = get_logic(req.type)
         if not logic:
@@ -146,17 +147,32 @@ def generate_family(req: GenerateRequest):
             template_path,
             output_rfa,
         )
+        # 保存先のフォルダを確認
+        os.makedirs(config.OUTPUT_DIR, exist_ok=True)
+
+        # ユニークな名前で保存
+        timestamp = int(time.time())
+        save_filename = f"{req.type}_{timestamp}.rfa"
+        save_path = os.path.join(
+            config.OUTPUT_DIR,
+            save_filename
+        )
+
+        # tempフォルダからOutputFamiliesフォルダにファイルを移動
+        shutil.move(output_rfa, save_path)
+        print(f"ファイルを移動しました: {save_path}")
 
         return FileResponse(
-            path=output_rfa,
-            filename=f"{req.type}_CloudGen.rfa",
+            path=save_path,
+            filename=save_filename,
             media_type="application/octet-stream",
         )
 
     except Exception as e:
+        print(f"生成時にエラーが発生しました: {str(e)}")
         raise HTTPException(
                 status_code=500,
-                detail=f"Failed to write JSON: {str(e)}",
+                detail=f"Failed to generate family: {str(e)}",
             ) from e
 
 
