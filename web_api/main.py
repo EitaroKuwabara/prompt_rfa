@@ -172,10 +172,18 @@ def generate_family(req: GenerateRequest):
                 with olefile.OleFileIO(save_path) as ole:
                     # Revitのプレビュー画像ストリームを探す
                     stream_name = None
-                    # 一般的なストリーム名 "RevitPreview4.0" を探す
-                    for entry in ole.listdir():
-                        if "RevitPreview4.0" in entry:
+                    # Revitのプレビュー画像ストリームを探す
+                    stream_name = None
+                    streams = ole.listdir()  # デバッグ用に全ストリームを取得
+                    print(f"📂 OLE Streams found: {streams}")  # ログに出力
+
+                    for entry in streams:
+                        # entryはリスト形式 (['RevitPreview4.0'] など) なので文字列に結合してチェック
+                        entry_name = "/".join(entry)
+                        # "RevitPreview" で始まる、または "Thumbnail" を含むものを探す（バージョン番号を無視）
+                        if "RevitPreview" in entry_name or "Thumbnail" in entry_name:
                             stream_name = entry
+                            print(f"🎯 Found preview stream: {entry_name}")
                             break
 
                     if stream_name:
