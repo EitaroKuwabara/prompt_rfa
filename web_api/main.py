@@ -7,6 +7,7 @@ import glob
 import os
 import shutil
 import time
+import olefile
 from openai import OpenAI
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -161,6 +162,36 @@ def generate_family(req: GenerateRequest):
         # tempフォルダからOutputFamiliesフォルダにファイルを移動
         shutil.move(output_rfa, save_path)
         print(f"ファイルを移動しました: {save_path}")
+
+        try:
+            png_filename = save_filename.replace(".rfa", ".png")
+            png_path = os.path.join(config.OUTPUT_DIR, png_filename)
+
+            # プレビュー画像の抽出処理
+            if olefile.isOleFile(save_path):
+                with olefile.OleFileIO(save_path) as ole:
+                    # Revitのプレビュー画像ストリームを探す
+                    stream_name = None
+                    # 一般的なストリーム名 "RevitPreview4.0" を探す
+                    for entry in ole.listdir():
+                        if "RevitPreview4.0" in entry:
+                            stream_name = entry
+                            break
+
+                    if stream_name:
+                        image_data = ole.openstream(stream_name).read()
+                        # そのままPNGとして保存
+                        with open(png_path, "wb") as f:
+                            f.write(image_data)
+                        print(f"✅ Preview extracted: {png_path}")
+                    else:
+                        print("⚠️ No preview stream found in RFA.")
+            else:
+                print("⚠️ Output file is not a valid OLE file.")
+
+        except (OSError, IOError) as e:
+            # 画像抽出に失敗しても、RFAのダウンロードはできるようにエラーは握りつぶす
+            print(f"⚠️ Failed to extract preview image: {e}")
 
         return FileResponse(
             path=save_path,
