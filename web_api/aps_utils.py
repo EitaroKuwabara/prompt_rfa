@@ -193,8 +193,10 @@ def run_gen_on_cloud(json_path, template_path, output_path):
         print(f"Status: {status}")
 
         if status == "success":
+            report_url = status_data.get("reportUrl")
+            print(f"📝 Autodesk Report Log: {report_url}")
             break
-        elif status in ["failed", "cancelled", "failedInstructions"]:
+        if status in ["failed", "cancelled", "failedInstructions"]:
             print("Job Failed!")
             report_url = status_data.get("reportUrl")
             if report_url:

@@ -109,6 +109,86 @@ namespace PromptRFA
                     OverwriteExistingFile = true,
                     Compact = true,
                 };
+
+                // 3Dビューを探してプレビューに設定する
+                View3D? previewView =
+                    new FilteredElementCollector(familyDoc)
+                        .OfClass(typeof(View3D))
+                        .Cast<View3D>()
+                        .FirstOrDefault(v =>
+                            !v.IsTemplate
+                            && v.Name == "{3D}"
+                        ); // デフォルト3Dビュー
+
+                // "{3D}" がなければ、最初に見つかった3Dビューを使う
+
+                if (previewView == null)
+                {
+                    // 3Dビューの種類(FamilyType)を取得
+                    var viewFamilyType =
+                        new FilteredElementCollector(
+                            familyDoc
+                        )
+                            .OfClass(typeof(ViewFamilyType))
+                            .Cast<ViewFamilyType>()
+                            .FirstOrDefault(x =>
+                                x.ViewFamily
+                                == ViewFamily.ThreeDimensional
+                            );
+
+                    if (viewFamilyType != null)
+                    {
+                        // ビュー作成のためのトランザクションを開始
+                        using (
+                            Transaction t = new Transaction(
+                                familyDoc,
+                                "Create Preview View"
+                            )
+                        )
+                        {
+                            t.Start();
+                            try
+                            {
+                                previewView =
+                                    View3D.CreateIsometric(
+                                        familyDoc,
+                                        viewFamilyType.Id
+                                    );
+                                if (previewView != null)
+                                {
+                                    previewView.Name =
+                                        "{3D}"; // 名前を{3D}にする
+
+                                    // 念のため詳細レベルを「標準」にしておく
+                                    previewView.DetailLevel =
+                                        ViewDetailLevel.Fine;
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine(
+                                    $"View Creation Error: {ex.Message}"
+                                );
+                            }
+                            t.Commit();
+                        }
+                    }
+                }
+
+                if (previewView != null)
+                {
+                    opt.PreviewViewId = previewView.Id;
+                    Console.WriteLine(
+                        $"✅ Set Preview View: {previewView.Name}"
+                    );
+                }
+                else
+                {
+                    Console.WriteLine(
+                        "⚠️ Warning: No 3D view found for preview."
+                    );
+                }
+
                 familyDoc.SaveAs(rfaName, opt);
                 Console.WriteLine($"Saved RFA: {rfaName}");
 

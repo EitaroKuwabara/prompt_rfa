@@ -52,7 +52,7 @@ def create_appbundle(auth_token):
     }
 
     # 1. AppBundleの定義を作成
-    appbundle_id = f"{CLIENT_ID}.{APPBUNDLE_NAME}+test"
+    appbundle_id = f"{CLIENT_ID}.{APPBUNDLE_NAME}+dev"
     print(f"Creating AppBundle: {appbundle_id} ...")
 
     url = f"{BASE_URL}/da/us-east/v3/appbundles"
