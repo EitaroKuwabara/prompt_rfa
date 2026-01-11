@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {Avatar, AvatarFallback, AvatarImage} from "@/components/ui/avatar";
+import {Logo} from "@/components/ui/logo";
 
 export function Header() {
   return (
@@ -22,10 +23,7 @@ export function Header() {
         {/* 左側: ロゴとデスクトップナビゲーション */}
         <div className="flex items-center gap-6 md:gap-10">
           <Link href="/" className="flex items-center gap-2">
-            <Package className="h-6 w-6 text-primary" />
-            <span className="text-xl font-bold tracking-tight">
-              Archifields
-            </span>
+            <Logo className="text-primary" />
           </Link>
           <nav className="hidden md:flex gap-6">
             <Link

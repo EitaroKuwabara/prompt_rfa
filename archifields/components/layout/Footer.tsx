@@ -43,7 +43,7 @@ export function Footer() {
 
           {/* リンク集 2 */}
           <div className="space-y-4">
-            <h4 className="text-sm font-semibold">サポート</h4>
+            <h4 className="text-sm font-semibold">Support</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
                 <Link href="/docs" className="hover:text-foreground">
@@ -57,7 +57,7 @@ export function Footer() {
               </li>
               <li>
                 <Link href="/contact" className="hover:text-foreground">
-                  お問い合わせ
+                  Contact
                 </Link>
               </li>
             </ul>
@@ -65,21 +65,21 @@ export function Footer() {
 
           {/* リンク集 3 */}
           <div className="space-y-4">
-            <h4 className="text-sm font-semibold">法的情報</h4>
+            <h4 className="text-sm font-semibold">Legal Information</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <Link href="/terms" className="hover:text-foreground">
-                  利用規約
+                <Link href="/legal/terms" className="hover:text-foreground">
+                  Terms of Service
                 </Link>
               </li>
               <li>
-                <Link href="/privacy" className="hover:text-foreground">
-                  プライバシーポリシー
+                <Link href="/legal/privacy" className="hover:text-foreground">
+                  Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link href="/commercial" className="hover:text-foreground">
-                  特定商取引法に基づく表記
+                <Link href="/legal/commercial" className="hover:text-foreground">
+                  Notation based on the Specified Commercial Transactions Act
                 </Link>
               </li>
             </ul>
