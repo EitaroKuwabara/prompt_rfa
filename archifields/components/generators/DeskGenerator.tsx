@@ -58,9 +58,9 @@ export function DeskGenerator({onSuccess}: DeskGeneratorProps) {
       <Card>
         <CardContent className="pt-6 space-y-4">
           <div className="space-y-2">
-            <Label>AI 設計アシスタント (机)</Label>
+            <Label>AI Design Assistant (Desk)</Label>
             <Textarea
-              placeholder="例: モダンなオフィスのデスク。天板はガラスで、脚は黒い金属にして。引き出しもつけて。"
+              placeholder="Example: A modern office desk. The top is glass and the legs are black metal. Also add drawers."
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               rows={3}
@@ -74,7 +74,7 @@ export function DeskGenerator({onSuccess}: DeskGeneratorProps) {
               {isAnalyzing ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
-                "AIに提案させる"
+                "AI Suggest"
               )}
             </Button>
           </div>
@@ -84,13 +84,13 @@ export function DeskGenerator({onSuccess}: DeskGeneratorProps) {
       {/* 詳細パラメータ設定フォーム */}
       <div className="space-y-4 border p-4 rounded-lg bg-slate-50">
         <h3 className="font-medium text-sm text-slate-500">
-          詳細パラメータ設定 (Desk)
+          Detailed Parameter Settings (Desk)
         </h3>
 
         {/* 基本寸法 */}
         <div className="grid grid-cols-3 gap-4">
           <div className="space-y-2">
-            <Label>幅 (mm)</Label>
+            <Label>Width (mm)</Label>
             <Input
               type="number"
               value={params.width}
@@ -98,7 +98,7 @@ export function DeskGenerator({onSuccess}: DeskGeneratorProps) {
             />
           </div>
           <div className="space-y-2">
-            <Label>奥行 (mm)</Label>
+            <Label>Depth (mm)</Label>
             <Input
               type="number"
               value={params.depth}
@@ -106,7 +106,7 @@ export function DeskGenerator({onSuccess}: DeskGeneratorProps) {
             />
           </div>
           <div className="space-y-2">
-            <Label>高さ (mm)</Label>
+            <Label>Height (mm)</Label>
             <Input
               type="number"
               value={params.height}
@@ -118,7 +118,7 @@ export function DeskGenerator({onSuccess}: DeskGeneratorProps) {
         {/* 机特有の寸法 */}
         <div className="grid grid-cols-2 gap-4 border-t pt-4">
           <div className="space-y-2">
-            <Label>天板厚 (mm)</Label>
+            <Label>Top Thickness (mm)</Label>
             <Input
               type="number"
               value={params.topThickness}
@@ -126,7 +126,7 @@ export function DeskGenerator({onSuccess}: DeskGeneratorProps) {
             />
           </div>
           <div className="space-y-2">
-            <Label>脚の太さ (mm)</Label>
+            <Label>Leg Width (mm)</Label>
             <Input
               type="number"
               value={params.legWidth}
@@ -138,7 +138,7 @@ export function DeskGenerator({onSuccess}: DeskGeneratorProps) {
         {/* マテリアル設定 */}
         <div className="grid grid-cols-2 gap-4 border-t pt-4">
           <div className="space-y-2">
-            <Label>天板素材</Label>
+            <Label>Top Material</Label>
             <Input
               value={params.topMaterialName}
               onChange={(e) =>
@@ -147,7 +147,7 @@ export function DeskGenerator({onSuccess}: DeskGeneratorProps) {
             />
           </div>
           <div className="space-y-2">
-            <Label>脚の素材</Label>
+            <Label>Leg Material</Label>
             <Input
               value={params.legMaterialName}
               onChange={(e) =>
@@ -168,7 +168,7 @@ export function DeskGenerator({onSuccess}: DeskGeneratorProps) {
               onChange={(e) => handleCheckboxChange("hasDrawers", e.target.checked)}
             />
             <Label htmlFor="hasDrawers" className="cursor-pointer">
-              引き出しを付ける (簡易形状)
+              Add Drawers (Simple Shape)
             </Label>
           </div>
         </div>

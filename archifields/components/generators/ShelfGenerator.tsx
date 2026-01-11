@@ -88,7 +88,7 @@ export function ShelfGenerator({onSuccess}: ShelfGeneratorProps) {
       {/* 詳細パラメータ設定フォーム */}
       <div className="space-y-4 border p-4 rounded-lg bg-slate-50">
         <h3 className="font-medium text-sm text-slate-500">
-          詳細パラメータ設定
+          Detailed Parameter Settings (Shelf)
         </h3>
 
         {/* 基本寸法 */}
@@ -102,7 +102,7 @@ export function ShelfGenerator({onSuccess}: ShelfGeneratorProps) {
             />
           </div>
           <div className="space-y-2">
-            <Label>奥行 (mm)</Label>
+            <Label>Depth (mm)</Label>
             <Input
               type="number"
               value={params.depth}
@@ -110,7 +110,7 @@ export function ShelfGenerator({onSuccess}: ShelfGeneratorProps) {
             />
           </div>
           <div className="space-y-2">
-            <Label>高さ (mm)</Label>
+            <Label>Height (mm)</Label>
             <Input
               type="number"
               value={params.height}
@@ -122,7 +122,7 @@ export function ShelfGenerator({onSuccess}: ShelfGeneratorProps) {
         {/* 板厚設定 */}
         <div className="grid grid-cols-3 gap-4 border-t pt-4">
           <div className="space-y-2">
-            <Label>天板厚</Label>
+            <Label>Top Thickness (mm)</Label>
             <Input
               type="number"
               value={params.topThickness}
@@ -130,7 +130,7 @@ export function ShelfGenerator({onSuccess}: ShelfGeneratorProps) {
             />
           </div>
           <div className="space-y-2">
-            <Label>側板厚</Label>
+            <Label>Side Thickness (mm)</Label>
             <Input
               type="number"
               value={params.sideThickness}
@@ -138,7 +138,7 @@ export function ShelfGenerator({onSuccess}: ShelfGeneratorProps) {
             />
           </div>
           <div className="space-y-2">
-            <Label>棚板厚</Label>
+            <Label>Shelf Thickness (mm)</Label>
             <Input
               type="number"
               value={params.shelfThickness}
@@ -151,7 +151,7 @@ export function ShelfGenerator({onSuccess}: ShelfGeneratorProps) {
         <div className="grid grid-cols-1 gap-4 border-t pt-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>天板素材</Label>
+              <Label>Top Material</Label>
               <Input
                 value={params.topMaterialName}
                 onChange={(e) =>
@@ -160,7 +160,7 @@ export function ShelfGenerator({onSuccess}: ShelfGeneratorProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label>側板素材</Label>
+              <Label>Side Material</Label>
               <Input
                 value={params.sideMaterialName}
                 onChange={(e) =>
@@ -171,7 +171,7 @@ export function ShelfGenerator({onSuccess}: ShelfGeneratorProps) {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>棚板素材</Label>
+              <Label>Shelf Material</Label>
               <Input
                 value={params.shelfMaterialName}
                 onChange={(e) =>
@@ -180,7 +180,7 @@ export function ShelfGenerator({onSuccess}: ShelfGeneratorProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label>棚板枚数</Label>
+              <Label>Shelf Count</Label>
               <Input
                 type="number"
                 value={params.shelfCount}
@@ -198,7 +198,7 @@ export function ShelfGenerator({onSuccess}: ShelfGeneratorProps) {
           {isGenerating ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
-            "Revitファミリを生成"
+            "Generate Revit Family"
           )}
         </Button>
       </div>

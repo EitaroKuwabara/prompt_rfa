@@ -30,19 +30,19 @@ export function Header() {
               href="/marketplace"
               className="text-sm font-medium transition-colors hover:text-primary"
             >
-              マーケットプレイス
+              Marketplace
             </Link>
             <Link
               href="/generator"
               className="text-sm font-medium transition-colors hover:text-primary"
             >
-              ジェネレーター
+              Generator
             </Link>
             <Link
               href="/manufacturers"
               className="text-sm font-medium transition-colors hover:text-primary"
             >
-              メーカーの方へ
+              For Manufacturers
             </Link>
           </nav>
         </div>
@@ -53,7 +53,7 @@ export function Header() {
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="ファミリを検索 (例: 椅子, TOTO, 窓)..."
+              placeholder="Search for families (e.g. chair, toilet, window)..."
               className="w-full bg-background pl-8 md:w-[300px] lg:w-[400px]"
             />
           </div>
@@ -66,7 +66,7 @@ export function Header() {
             variant="ghost"
             size="icon"
             className="hidden md:flex"
-            title="ファミリをアップロード"
+            title="Upload a family"
           >
             <UploadCloud className="h-5 w-5" />
           </Button>
@@ -85,7 +85,7 @@ export function Header() {
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
                   <p className="text-sm font-medium leading-none">
-                    ゲストユーザー
+                    Guest User
                   </p>
                   <p className="text-xs leading-none text-muted-foreground">
                     guest@example.com
@@ -93,11 +93,11 @@ export function Header() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>ダッシュボード</DropdownMenuItem>
-              <DropdownMenuItem>作成したファミリ</DropdownMenuItem>
-              <DropdownMenuItem>お気に入り</DropdownMenuItem>
+              <DropdownMenuItem>Dashboard</DropdownMenuItem>
+              <DropdownMenuItem>Created Families</DropdownMenuItem>
+              <DropdownMenuItem>Favorites</DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>ログアウト</DropdownMenuItem>
+              <DropdownMenuItem>Logout</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -119,16 +119,16 @@ export function Header() {
                   <span>Archifields</span>
                 </Link>
                 <Link href="/marketplace" className="hover:text-primary">
-                  マーケットプレイス
+                  Marketplace
                 </Link>
                 <Link href="/generator" className="hover:text-primary">
-                  ジェネレーター
+                  Generator
                 </Link>
                 <Link href="/manufacturers" className="hover:text-primary">
-                  メーカーの方へ
+                  For Manufacturers
                 </Link>
                 <Link href="/login" className="hover:text-primary">
-                  ログイン / 登録
+                  Login / Register
                 </Link>
               </nav>
             </SheetContent>

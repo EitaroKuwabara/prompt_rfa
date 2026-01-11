@@ -13,29 +13,29 @@ export function Footer() {
               <span className="text-xl font-bold">Archifields</span>
             </Link>
             <p className="text-sm text-muted-foreground max-w-xs mb-6">
-              建築設計をもっと自由に。
+              Make architecture design more free.
               <br />
-              誰でも簡単にBIMファミリを作成・共有できる次世代のプラットフォームです。
+              Anyone can easily create and share BIM families with the next generation platform.
             </p>
           </div>
 
           {/* リンク集 1 */}
           <div className="space-y-4">
-            <h4 className="text-sm font-semibold">プラットフォーム</h4>
+            <h4 className="text-sm font-semibold">Platform</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
                 <Link href="/marketplace" className="hover:text-foreground">
-                  マーケットプレイス
+                  Marketplace
                 </Link>
               </li>
               <li>
                 <Link href="/generator" className="hover:text-foreground">
-                  AIジェネレーター
+                  Generator
                 </Link>
               </li>
               <li>
                 <Link href="/pricing" className="hover:text-foreground">
-                  料金プラン
+                  Pricing Plan
                 </Link>
               </li>
             </ul>
@@ -47,12 +47,12 @@ export function Footer() {
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
                 <Link href="/docs" className="hover:text-foreground">
-                  使い方ガイド
+                  Usage Guide
                 </Link>
               </li>
               <li>
                 <Link href="/manufacturers" className="hover:text-foreground">
-                  メーカー向けガイド
+                  Guide for Manufacturers
                 </Link>
               </li>
               <li>

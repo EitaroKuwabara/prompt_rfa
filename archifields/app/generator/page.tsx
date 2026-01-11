@@ -32,14 +32,14 @@ export default function GeneratorPage() {
               Family Generator
             </h1>
             <p className="text-muted-foreground">
-              カテゴリを選んで、言葉または数値で設計してください。
+              Select the category and design by words or numbers.
             </p>
           </div>
 
           <Tabs defaultValue="desk" className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-4">
-              <TabsTrigger value="desk">机 (Desk)</TabsTrigger>
-              <TabsTrigger value="shelf">棚 (Shelf)</TabsTrigger>
+              <TabsTrigger value="desk">Desk (Desk)</TabsTrigger>
+              <TabsTrigger value="shelf">Shelf (Shelf)</TabsTrigger>
             </TabsList>
 
             {/* 机コンポーネント呼び出し */}
@@ -66,13 +66,13 @@ export default function GeneratorPage() {
                   className="object-contain max-h-full max-w-full"
                 />
               </div>
-              <h3 className="text-xl font-semibold text-green-600">生成完了</h3>
+              <h3 className="text-xl font-semibold text-green-600">Generation Complete</h3>
               <Button
                 onClick={handleDownload}
                 className="w-full max-w-xs"
                 variant="default"
               >
-                <Download className="mr-2 h-4 w-4" /> ダウンロード (.rfa)
+                <Download className="mr-2 h-4 w-4" /> Download (.rfa)
               </Button>
             </div>
           ) : (
@@ -80,9 +80,9 @@ export default function GeneratorPage() {
               <div className="flex h-40 w-40 items-center justify-center rounded-full bg-background shadow-sm">
                 <Download className="h-10 w-10 text-muted-foreground" />
               </div>
-              <h3 className="text-xl font-semibold">プレビュー準備中</h3>
+              <h3 className="text-xl font-semibold">Preview Preparation</h3>
               <p className="text-sm text-muted-foreground max-w-xs">
-                生成ボタンを押すと、ここに完成したファミリの3Dプレビューが表示されます。
+                When you press the generate button, the 3D preview of the completed family will be displayed here.
               </p>
             </div>
           )}
