@@ -188,6 +188,18 @@ def generate_family(req: GenerateRequest):
 
                     if stream_name:
                         image_data = ole.openstream(stream_name).read()
+                        png_signature = b"\x89PNG\r\n\x1a\n"
+                        start_index = image_data.find(png_signature)
+
+                        if start_index != -1:
+                            # ヘッダーが見つかったら、そこから後ろだけを使う（ゴミ除去）
+                            image_data = image_data[start_index:]
+                            print(
+                                f"🧹 Cleaned image data (removed {start_index} bytes)"
+                            )
+                        else:
+                            print("⚠️ PNG header not found, saving raw data.")
+
                         # そのままPNGとして保存
                         with open(png_path, "wb") as f:
                             f.write(image_data)
@@ -215,7 +227,6 @@ def generate_family(req: GenerateRequest):
             ) from e
 
 
-# プレビュー・ダウンロード系は変更なし
 @app.get("/preview/latest")
 def preview_latest():
     """
