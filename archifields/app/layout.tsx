@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 // import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Inter } from "next/font/google";
+import { Analytics } from "@vercel/analytics/react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { BetaBanner } from "@/components/layout/BetaBanner";
@@ -26,6 +27,7 @@ export default function RootLayout({
           <main className="flex-1 bg-background">{children}</main>
           <Footer />
         </div>
+        <Analytics />
       </body>
     </html>
   );
