@@ -181,7 +181,7 @@ export function DeskGenerator({onSuccess}: DeskGeneratorProps) {
           {isGenerating ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
-            "Revitファミリを生成"
+            "Generate Revit Family"
           )}
         </Button>
       </div>

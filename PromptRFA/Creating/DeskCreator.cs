@@ -1,9 +1,9 @@
 // PromptRFA/Creating/DeskCreator.cs
-using System;
-using System.Collections.Generic;
+
 using Autodesk.Revit.DB;
 using Newtonsoft.Json.Linq;
 using PromptRFA.Models;
+using PromptRFA.Utils;
 
 namespace PromptRFA.Creating
 {
@@ -11,243 +11,495 @@ namespace PromptRFA.Creating
     {
         public void Execute(Document doc, JObject specsJson)
         {
-            // 1. JSONを机の型に変換
-            DeskSpecs? specs =
-                specsJson.ToObject<DeskSpecs>();
+            DebugLogger.Show("Debug", "開始");
+            DeskSpecs specs =
+                specsJson.ToObject<DeskSpecs>()!;
             FamilyManager famMgr = doc.FamilyManager;
 
-            using (
-                Transaction t = new Transaction(
-                    doc,
-                    "Create Desk"
-                )
-            )
+            using Transaction t = new(
+                doc,
+                "Create Parametric Desk"
+            );
             {
                 t.Start();
 
-                // 2. パラメータの準備 (天板用と脚用)
-                FamilyParameter pTopMat =
-                    EnsureMaterialParam(
+                try
+                {
+                    famMgr.NewType("Standard");
+                }
+                catch { }
+
+                // パラメータ準備
+                var pW = FamilyParameterUtils.EnsureParam(
+                    doc,
+                    "Width",
+                    GroupTypeId.Geometry,
+                    SpecTypeId.Length
+                );
+
+                var pD = FamilyParameterUtils.EnsureParam(
+                    doc,
+                    "Depth",
+                    GroupTypeId.Geometry,
+                    SpecTypeId.Length
+                );
+
+                var pH = FamilyParameterUtils.EnsureParam(
+                    doc,
+                    "Height",
+                    GroupTypeId.Geometry,
+                    SpecTypeId.Length
+                );
+
+                var pTopThk =
+                    FamilyParameterUtils.EnsureParam(
+                        doc,
+                        "Top Thickness",
+                        GroupTypeId.Geometry,
+                        SpecTypeId.Length
+                    );
+
+                var pUnderside =
+                    FamilyParameterUtils.EnsureParam(
+                        doc,
+                        "Under Side Height",
+                        GroupTypeId.Geometry,
+                        SpecTypeId.Length
+                    );
+
+                var pLegW =
+                    FamilyParameterUtils.EnsureParam(
+                        doc,
+                        "Leg Width",
+                        GroupTypeId.Geometry,
+                        SpecTypeId.Length
+                    );
+
+                var pMatTop =
+                    FamilyParameterUtils.EnsureMaterialParam(
                         doc,
                         "Top Material"
                     );
-                FamilyParameter pLegMat =
-                    EnsureMaterialParam(
+
+                var pMatLeg =
+                    FamilyParameterUtils.EnsureMaterialParam(
                         doc,
                         "Leg Material"
                     );
 
-                // 3. 寸法変換 (mm -> feet)
-                double width = specs!.Width / 304.8;
-                double depth = specs.Depth / 304.8;
-                double height = specs.Height / 304.8;
-                double topThk = specs.TopThickness / 304.8;
-                double legW = specs.LegWidth / 304.8;
-
-                // 4. ジオメトリ作成
-
-                // --- A. 天板 (Top) ---
-                // Z位置: 高さの頂点から下に厚み分
-                Extrusion? topSolid = CreateBox(
-                    doc,
-                    width,
-                    depth,
-                    topThk,
-                    0,
-                    0,
-                    height - topThk
+                // 初期値セット
+                famMgr.Set(pW, specs.Width / 304.8);
+                famMgr.Set(pD, specs.Depth / 304.8);
+                famMgr.Set(pH, specs.Height / 304.8);
+                famMgr.Set(
+                    pTopThk,
+                    specs.TopThickness / 304.8
                 );
-                if (topSolid != null)
-                {
-                    famMgr.AssociateElementParameterToFamilyParameter(
-                        topSolid.get_Parameter(
-                            BuiltInParameter.MATERIAL_ID_PARAM
-                        ),
-                        pTopMat
-                    );
-                }
-
-                // --- B. 脚 (Legs) x 4本 ---
-                // 脚の高さ = 全高 - 天板厚
-                double legH = height - topThk;
-
-                // 配置位置の計算 (中心から端へのオフセット)
-                double offsetX = (width / 2) - (legW / 2);
-                double offsetY = (depth / 2) - (legW / 2);
-
-                // 4本の脚を作成 (右奥, 左奥, 左手前, 右手前)
-                CreateLeg(
-                    doc,
-                    legW,
-                    legH,
-                    offsetX,
-                    offsetY,
-                    pLegMat,
-                    famMgr
+                famMgr.Set(
+                    pLegW,
+                    (
+                        specs.LegWidth > 0
+                            ? specs.LegWidth
+                            : 50.0
+                    ) / 304.8
                 );
-                CreateLeg(
-                    doc,
-                    legW,
-                    legH,
-                    -offsetX,
-                    offsetY,
-                    pLegMat,
-                    famMgr
-                );
-                CreateLeg(
-                    doc,
-                    legW,
-                    legH,
-                    -offsetX,
-                    -offsetY,
-                    pLegMat,
-                    famMgr
-                );
-                CreateLeg(
-                    doc,
-                    legW,
-                    legH,
-                    offsetX,
-                    -offsetY,
-                    pLegMat,
-                    famMgr
+                famMgr.SetFormula(
+                    pUnderside,
+                    "Height - Top Thickness"
                 );
 
-                // --- C. 引き出し (Drawers) - オプション ---
-                if (specs.HasDrawers)
-                {
-                    // 簡易的に天板の下に「幕板兼引き出しボックス」を追加
-                    double drawerHeight = 150.0 / 304.8; // 高さ150mm固定
-                    double drawerWidth = width - (legW * 2); // 脚の内側に収める
-                    double drawerDepth = depth - (legW * 2);
+                DebugLogger.Show(
+                    "Debug",
+                    "パラメータ設定完了 -> 天板作成へ"
+                );
 
-                    // 位置: 天板の下
-                    double drawerZ =
-                        height - topThk - drawerHeight;
+                // パラメトリック天板の作成
+                CreateTop(
+                    doc,
+                    pW,
+                    pD,
+                    pH,
+                    pUnderside,
+                    pMatTop,
+                    specs
+                );
 
-                    // 床より下に行かないように調整
-                    if (drawerZ > 0)
-                    {
-                        Extrusion? drawerSolid = CreateBox(
-                            doc,
-                            drawerWidth,
-                            drawerDepth,
-                            drawerHeight,
-                            0,
-                            0,
-                            drawerZ
-                        );
-                        if (drawerSolid != null)
-                        {
-                            // 引き出しは脚と同じ素材にしておく
-                            famMgr.AssociateElementParameterToFamilyParameter(
-                                drawerSolid.get_Parameter(
-                                    BuiltInParameter.MATERIAL_ID_PARAM
-                                ),
-                                pLegMat
-                            );
-                        }
-                    }
-                }
+                DebugLogger.Show(
+                    "Debug",
+                    "天板作成完了 -> 脚作成へ"
+                );
+
+                // 脚作成
+                CreateLegs(
+                    doc,
+                    pLegW,
+                    pUnderside,
+                    pMatLeg,
+                    specs
+                );
+
+                DebugLogger.Show(
+                    "Debug",
+                    "脚作成完了 -> コミットへ"
+                );
 
                 t.Commit();
             }
         }
 
-        // 脚を1本つくるヘルパー
-        private void CreateLeg(
+        // 天板作成ロジック
+        private static void CreateTop(
             Document doc,
-            double w,
-            double h,
-            double cx,
-            double cy,
-            FamilyParameter matParam,
-            FamilyManager mgr
+            FamilyParameter pW,
+            FamilyParameter pD,
+            FamilyParameter pH,
+            FamilyParameter pUnderside,
+            FamilyParameter pMat,
+            DeskSpecs specs
         )
         {
-            Extrusion? leg = CreateBox(
-                doc,
-                w,
-                w,
-                h,
-                cx,
-                cy,
-                0
-            ); // BaseZ is 0 (床から)
-            if (leg != null)
-            {
-                mgr.AssociateElementParameterToFamilyParameter(
-                    leg.get_Parameter(
-                        BuiltInParameter.MATERIAL_ID_PARAM
-                    ),
-                    matParam
-                );
-            }
-        }
-
-        // --- 共通ヘルパー (ShelfCreatorと同じ) ---
-        private FamilyParameter EnsureMaterialParam(
-            Document doc,
-            string paramName
-        )
-        {
-            FamilyManager mgr = doc.FamilyManager;
-            FamilyParameter param = mgr.get_Parameter(
-                paramName
+            DebugLogger.Show(
+                "Debug",
+                "天板 - 参照面作成開始"
             );
-            if (param == null)
-            {
-                param = mgr.AddParameter(
-                    paramName,
-                    GroupTypeId.Materials,
-                    SpecTypeId.Reference.Material,
-                    false
+            var centerLR =
+                FamilyGeometryUtils.GetReferencePlane(
+                    doc,
+                    ReferencePlaneReference.CenterLeftRight
                 );
-            }
-            return param;
+            var centerFB =
+                FamilyGeometryUtils.GetReferencePlane(
+                    doc,
+                    ReferencePlaneReference.CenterFrontBack
+                );
+            var view = FamilyGeometryUtils.FindPlanView(
+                doc
+            )!;
+            double hW = specs.Width / 304.8 / 2.0;
+            double hD = specs.Depth / 304.8 / 2.0;
+            // 参照面
+            var refL = FamilyGeometryUtils.CreateRefPlane(
+                doc,
+                view,
+                new XYZ(-hW, 0, 0),
+                new XYZ(-hW, 1, 0),
+                "Left",
+                centerLR
+            );
+            var refR = FamilyGeometryUtils.CreateRefPlane(
+                doc,
+                view,
+                new XYZ(hW, 0, 0),
+                new XYZ(hW, 1, 0),
+                "Right",
+                centerLR
+            );
+            var refF = FamilyGeometryUtils.CreateRefPlane(
+                doc,
+                view,
+                new XYZ(0, -hD, 0),
+                new XYZ(1, -hD, 0),
+                "Front",
+                centerFB
+            );
+            var refB = FamilyGeometryUtils.CreateRefPlane(
+                doc,
+                view,
+                new XYZ(0, hD, 0),
+                new XYZ(1, hD, 0),
+                "Back",
+                centerFB
+            );
+            // 寸法
+            DebugLogger.Show(
+                "Debug",
+                "天板 - 寸法作成開始"
+            );
+            FamilyDimensionUtils.AddDimensions(
+                doc,
+                view,
+                refL,
+                centerLR,
+                refR,
+                pW
+            );
+            FamilyDimensionUtils.AddDimensions(
+                doc,
+                view,
+                refF,
+                centerFB,
+                refB,
+                pD
+            );
+            // 形状
+            DebugLogger.Show(
+                "Debug",
+                "天板 - 形状(Extrusion)作成開始"
+            );
+            CurveArrArray profile = CreateRect(
+                -hW,
+                -hD,
+                hW,
+                hD
+            );
+            SketchPlane sp = SketchPlane.Create(
+                doc,
+                Plane.CreateByNormalAndOrigin(
+                    XYZ.BasisZ,
+                    XYZ.Zero
+                )
+            );
+            Extrusion top = doc.FamilyCreate.NewExtrusion(
+                true,
+                profile,
+                sp,
+                1.0
+            );
+            // パラメータ
+            DebugLogger.Show(
+                "Debug",
+                "天板 - パラメータ紐付け開始"
+            );
+            // 上端
+            doc.FamilyManager.AssociateElementParameterToFamilyParameter(
+                top.get_Parameter(
+                    BuiltInParameter.EXTRUSION_END_PARAM
+                ),
+                pH
+            );
+            // 下端
+            doc.FamilyManager.AssociateElementParameterToFamilyParameter(
+                top.get_Parameter(
+                    BuiltInParameter.EXTRUSION_START_PARAM
+                ),
+                pUnderside
+            );
+            doc.Regenerate();
+
+            DebugLogger.Show("Debug", "天板 - Align開始");
+
+            FamilyGeometryUtils.AlignFaces(
+                doc,
+                top,
+                [refL, refR, refF, refB]
+            );
         }
 
-        private Extrusion? CreateBox(
+        private static void CreateLegs(
             Document doc,
-            double w,
-            double d,
-            double h,
-            double cx,
-            double cy,
-            double bz
+            FamilyParameter pLegW,
+            FamilyParameter pUnderside,
+            FamilyParameter pMat,
+            DeskSpecs specs
         )
         {
-            CurveArray curveArray = new CurveArray();
-            XYZ p1 = new XYZ(cx - w / 2, cy - d / 2, bz);
-            XYZ p2 = new XYZ(cx + w / 2, cy - d / 2, bz);
-            XYZ p3 = new XYZ(cx + w / 2, cy + d / 2, bz);
-            XYZ p4 = new XYZ(cx - w / 2, cy + d / 2, bz);
+            // 天板で作成した参照面を名前で探す
+            DebugLogger.Show("Debug", "脚 - 参照面取得");
+            var view = FamilyGeometryUtils.FindPlanView(
+                doc
+            )!;
 
-            curveArray.Append(Line.CreateBound(p1, p2));
-            curveArray.Append(Line.CreateBound(p2, p3));
-            curveArray.Append(Line.CreateBound(p3, p4));
-            curveArray.Append(Line.CreateBound(p4, p1));
-
-            CurveArrArray curveArrArray =
-                new CurveArrArray();
-            curveArrArray.Append(curveArray);
-
-            if (doc.IsFamilyDocument)
-            {
-                Plane plane = Plane.CreateByNormalAndOrigin(
+            var refL = FindRP(doc, "Left")!;
+            var refR = FindRP(doc, "Right")!;
+            var refF = FindRP(doc, "Front")!;
+            var refB = FindRP(doc, "Back")!;
+            if (refL == null)
+                return;
+            double hW = specs.Width / 304.8 / 2.0;
+            double hD = specs.Depth / 304.8 / 2.0;
+            // double hH = specs.Height / 304.8 / 2.0;
+            double lW =
+                (specs.LegWidth > 0 ? specs.LegWidth : 50.0)
+                / 304.8;
+            // 内側の参照面
+            DebugLogger.Show(
+                "Debug",
+                "脚 - 内側参照面作成"
+            );
+            var refLIn = FamilyGeometryUtils.CreateRefPlane(
+                doc,
+                view,
+                new XYZ(-hW + lW, 0, 0),
+                new XYZ(-hW + lW, 1, 0),
+                "LeftIn",
+                refL
+            );
+            var refRIn = FamilyGeometryUtils.CreateRefPlane(
+                doc,
+                view,
+                new XYZ(hW - lW, 0, 0),
+                new XYZ(hW - lW, 1, 0),
+                "RightIn",
+                refR
+            );
+            var refFIn = FamilyGeometryUtils.CreateRefPlane(
+                doc,
+                view,
+                new XYZ(0, -hD + lW, 0),
+                new XYZ(1, -hD + lW, 0),
+                "FrontIn",
+                refF
+            );
+            var refBIn = FamilyGeometryUtils.CreateRefPlane(
+                doc,
+                view,
+                new XYZ(0, hD - lW, 0),
+                new XYZ(1, hD - lW, 0),
+                "BackIn",
+                refB
+            );
+            // 脚幅の拘束
+            DebugLogger.Show(
+                "Debug",
+                "脚 - 拘束(AddConstraint)開始"
+            );
+            FamilyDimensionUtils.AddConstraint(
+                doc,
+                view,
+                refL,
+                refLIn,
+                pLegW
+            );
+            FamilyDimensionUtils.AddConstraint(
+                doc,
+                view,
+                refRIn,
+                refR,
+                pLegW
+            );
+            FamilyDimensionUtils.AddConstraint(
+                doc,
+                view,
+                refF,
+                refFIn,
+                pLegW
+            );
+            FamilyDimensionUtils.AddConstraint(
+                doc,
+                view,
+                refBIn,
+                refB,
+                pLegW
+            );
+            // 4本の脚のプロファイル
+            DebugLogger.Show("Debug", "脚 - 形状作成開始");
+            CurveArrArray curves = new();
+            curves.Append(
+                CreateRectCurve(
+                    -hW,
+                    -hD,
+                    -hW + lW,
+                    -hD + lW
+                )
+            ); // 左前
+            curves.Append(
+                CreateRectCurve(hW - lW, -hD, hW, -hD + lW)
+            ); // 右前
+            curves.Append(
+                CreateRectCurve(-hW, hD - lW, -hW + lW, hD)
+            ); // 左奥
+            curves.Append(
+                CreateRectCurve(hW - lW, hD - lW, hW, hD)
+            ); // 右奥
+            SketchPlane sp = SketchPlane.Create(
+                doc,
+                Plane.CreateByNormalAndOrigin(
                     XYZ.BasisZ,
-                    new XYZ(0, 0, bz)
-                );
-                SketchPlane sketchPlane =
-                    SketchPlane.Create(doc, plane);
-                return doc.FamilyCreate.NewExtrusion(
-                    true,
-                    curveArrArray,
-                    sketchPlane,
-                    h
-                );
-            }
-            return null;
+                    XYZ.Zero
+                )
+            );
+            Extrusion legs = doc.FamilyCreate.NewExtrusion(
+                true,
+                curves,
+                sp,
+                1.0
+            );
+            legs.get_Parameter(
+                    BuiltInParameter.EXTRUSION_START_PARAM
+                )
+                .Set(0.0);
+            // 天板の裏まで伸ばす
+            doc.FamilyManager.AssociateElementParameterToFamilyParameter(
+                legs.get_Parameter(
+                    BuiltInParameter.EXTRUSION_END_PARAM
+                ),
+                pUnderside
+            );
+            doc.Regenerate();
+            DebugLogger.Show("Debug", "脚 - Align開始");
+            FamilyGeometryUtils.AlignFaces(
+                doc,
+                legs,
+                [
+                    refL,
+                    refR,
+                    refF,
+                    refB,
+                    refLIn,
+                    refRIn,
+                    refFIn,
+                    refBIn,
+                ]
+            );
+        }
+
+        // 矩形作成ヘルパー
+        private static CurveArrArray CreateRect(
+            double x1,
+            double y1,
+            double x2,
+            double y2
+        )
+        {
+            var arr = new CurveArrArray();
+            arr.Append(CreateRectCurve(x1, y1, x2, y2));
+            return arr;
+        }
+
+        private static CurveArray CreateRectCurve(
+            double x1,
+            double y1,
+            double x2,
+            double y2
+        )
+        {
+            var c = new CurveArray();
+            c.Append(
+                Line.CreateBound(
+                    new XYZ(x1, y1, 0),
+                    new XYZ(x2, y1, 0)
+                )
+            );
+            c.Append(
+                Line.CreateBound(
+                    new XYZ(x2, y1, 0),
+                    new XYZ(x2, y2, 0)
+                )
+            );
+            c.Append(
+                Line.CreateBound(
+                    new XYZ(x2, y2, 0),
+                    new XYZ(x1, y2, 0)
+                )
+            );
+            c.Append(
+                Line.CreateBound(
+                    new XYZ(x1, y2, 0),
+                    new XYZ(x1, y1, 0)
+                )
+            );
+            return c;
+        }
+
+        private static ReferencePlane? FindRP(
+            Document doc,
+            string name
+        )
+        {
+            return new FilteredElementCollector(doc)
+                .OfClass(typeof(ReferencePlane))
+                .Cast<ReferencePlane>()
+                .FirstOrDefault(rp => rp.Name == name);
         }
     }
 }

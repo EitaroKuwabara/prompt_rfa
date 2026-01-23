@@ -1,6 +1,4 @@
 // PromptRFA/Creating/ShelfCreator.cs
-using System;
-using System.Collections.Generic;
 using Autodesk.Revit.DB;
 using Newtonsoft.Json.Linq;
 using PromptRFA.Models;
@@ -14,12 +12,10 @@ namespace PromptRFA.Creating
             ShelfSpecs? specs =
                 specsJson.ToObject<ShelfSpecs>();
             FamilyManager famMgr = doc.FamilyManager;
-            using (
-                Transaction t = new Transaction(
-                    doc,
-                    "Create Advanced Shelf"
-                )
-            )
+            using Transaction t = new(
+                doc,
+                "Create Advanced Shelf"
+            );
             {
                 t.Start();
 
@@ -141,7 +137,7 @@ namespace PromptRFA.Creating
         }
 
         // マテリアルパラメータが存在するか確認し、なければ作るヘルパー
-        private FamilyParameter EnsureMaterialParam(
+        private static FamilyParameter EnsureMaterialParam(
             Document doc,
             string paramName
         )
@@ -150,22 +146,21 @@ namespace PromptRFA.Creating
             FamilyParameter param = mgr.get_Parameter(
                 paramName
             );
-            if (param == null)
-            {
-                // 新規作成: マテリアル型のインスタンスパラメータとして作成
-                // ※Revit 2025などのバージョンにより引数が異なる場合がありますが、基本は以下
-                param = mgr.AddParameter(
-                    paramName,
-                    GroupTypeId.Materials,
-                    SpecTypeId.Reference.Material,
-                    false
-                );
-            }
+
+            // 新規作成: マテリアル型のインスタンスパラメータとして作成
+            // ※Revit 2025などのバージョンにより引数が異なる場合がありますが、基本は以下
+            param ??= mgr.AddParameter(
+                paramName,
+                GroupTypeId.Materials,
+                SpecTypeId.Reference.Material,
+                false
+            );
+
             return param;
         }
 
         // Extrusion (実体) を返すように変更
-        private Extrusion? CreateBox(
+        private static Extrusion? CreateBox(
             Document doc,
             double w,
             double d,
@@ -175,19 +170,18 @@ namespace PromptRFA.Creating
             double bz
         )
         {
-            CurveArray curveArray = new CurveArray();
-            XYZ p1 = new XYZ(cx - w / 2, cy - d / 2, bz);
-            XYZ p2 = new XYZ(cx + w / 2, cy - d / 2, bz);
-            XYZ p3 = new XYZ(cx + w / 2, cy + d / 2, bz);
-            XYZ p4 = new XYZ(cx - w / 2, cy + d / 2, bz);
+            CurveArray curveArray = new();
+            XYZ p1 = new(cx - w / 2, cy - d / 2, bz);
+            XYZ p2 = new(cx + w / 2, cy - d / 2, bz);
+            XYZ p3 = new(cx + w / 2, cy + d / 2, bz);
+            XYZ p4 = new(cx - w / 2, cy + d / 2, bz);
 
             curveArray.Append(Line.CreateBound(p1, p2));
             curveArray.Append(Line.CreateBound(p2, p3));
             curveArray.Append(Line.CreateBound(p3, p4));
             curveArray.Append(Line.CreateBound(p4, p1));
 
-            CurveArrArray curveArrArray =
-                new CurveArrArray();
+            CurveArrArray curveArrArray = new();
             curveArrArray.Append(curveArray);
 
             if (doc.IsFamilyDocument)
