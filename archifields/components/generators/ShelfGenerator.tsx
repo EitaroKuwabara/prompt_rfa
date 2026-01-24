@@ -78,7 +78,7 @@ export function ShelfGenerator({onSuccess}: ShelfGeneratorProps) {
               {isAnalyzing ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
-                "AIに提案させる"
+                "AI Suggest"
               )}
             </Button>
           </div>
