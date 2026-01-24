@@ -62,19 +62,34 @@ namespace PromptRFA
         }
 
         // ローカルテストの処理
-        private Result RunDebugMode(
+        private static Result RunDebugMode(
             ExternalCommandData commandData
         )
         {
             // テスト用のダミーデータ
             var specs = new JObject
             {
-                ["Width"] = 1200.0,
-                ["Depth"] = 700.0,
-                ["Height"] = 700.0,
-                ["TopThickness"] = 30.0,
-                ["TopMaterialName"] = "Glass",
-                ["LegWidth"] = 50.0,
+                // デスクのデータ
+                // ["Width"] = 1200.0,
+                // ["Depth"] = 700.0,
+                // ["Height"] = 700.0,
+                // ["TopThickness"] = 30.0,
+                // ["TopMaterialName"] = "Glass",
+                // ["LegWidth"] = 50.0,
+
+                // 棚のデータ
+                ["Width"] = 900.0, // 幅
+                ["Depth"] = 450.0, // 奥行
+                ["Height"] = 1800.0, // 高さ
+                ["TopThickness"] = 25.0, // 天板厚
+                ["SideThickness"] = 25.0, // 側板厚 (追加)
+                ["ShelfThickness"] = 20.0, // 棚板厚 (追加)
+                ["ShelfCount"] = 4, // 棚板の枚数 (追加)
+
+                // マテリアル名
+                ["TopMaterialName"] = "Wood",
+                ["SideMaterialName"] = "Wood",
+                ["ShelfMaterialName"] = "Wood",
             };
 
             // テンプレートを探す
@@ -85,9 +100,7 @@ namespace PromptRFA
                     "Error",
                     "テンプレートが見つかりませんでした。手動で選択してください。"
                 );
-                FileOpenDialog dialog = new FileOpenDialog(
-                    "rft"
-                );
+                FileOpenDialog dialog = new("rft");
                 if (
                     dialog.Show()
                     == ItemSelectionDialogResult.Confirmed
@@ -100,12 +113,15 @@ namespace PromptRFA
                     return Result.Cancelled;
             }
 
-            // 3. メモリ上で作成して保存して開く
+            // メモリ上で作成して保存して開く
             var app = commandData.Application.Application;
             var doc = app.NewFamilyDocument(tmplPath);
 
-            // DeskCreatorを実行！
-            new DeskCreator().Execute(doc, specs);
+            // Creatorを実行！
+            // 机の場合
+            // new DeskCreator().Execute(doc, specs);
+            // 棚の場合
+            new ShelfCreator().Execute(doc, specs);
 
             // 一時ファイルに保存して表示
             string tempPath = Path.Combine(

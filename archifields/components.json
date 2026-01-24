@@ -3,16 +3,18 @@
     "parameters": {
         "familyName": "output",
         "category": "Furniture",
-        "type": "Desk",
+        "type": "Shelf",
         "specs": {
-            "Width": 1600,
-            "Depth": 800,
-            "Height": 750,
-            "TopThickness": 30,
-            "LegWidth": 50,
+            "Width": 800,
+            "Depth": 250,
+            "Height": 1800,
+            "TopThickness": 25,
+            "SideThickness": 20,
+            "ShelfThickness": 18,
             "TopMaterialName": "Wood",
-            "LegMaterialName": "Steel",
-            "HasDrawers": true
+            "SideMaterialName": "Wood",
+            "ShelfMaterialName": "Wood",
+            "ShelfCount": 6
         }
     }
 }

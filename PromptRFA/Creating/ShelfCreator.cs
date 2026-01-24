@@ -2,6 +2,7 @@
 using Autodesk.Revit.DB;
 using Newtonsoft.Json.Linq;
 using PromptRFA.Models;
+using PromptRFA.Utils;
 
 namespace PromptRFA.Creating
 {
@@ -9,6 +10,7 @@ namespace PromptRFA.Creating
     {
         public void Execute(Document doc, JObject specsJson)
         {
+            DebugLogger.Show("Debug", "棚作成開始");
             ShelfSpecs? specs =
                 specsJson.ToObject<ShelfSpecs>();
             FamilyManager famMgr = doc.FamilyManager;
@@ -18,27 +20,95 @@ namespace PromptRFA.Creating
             );
             {
                 t.Start();
+                try
+                {
+                    famMgr.NewType("Standard");
+                }
+                catch
+                {
+                    // 既にタイプがある場合は無視してOK
+                }
 
-                // 1. パラメータの準備
-                // それぞれの部位用に、ユーザーが変更可能なパラメータを作る
-                FamilyParameter pTopMat =
-                    EnsureMaterialParam(
+                // 寸法パラメータを作成
+                var pW = FamilyParameterUtils.EnsureParam(
+                    doc,
+                    "Width",
+                    GroupTypeId.Geometry,
+                    SpecTypeId.Length
+                );
+                var pD = FamilyParameterUtils.EnsureParam(
+                    doc,
+                    "Depth",
+                    GroupTypeId.Geometry,
+                    SpecTypeId.Length
+                );
+                var pH = FamilyParameterUtils.EnsureParam(
+                    doc,
+                    "Height",
+                    GroupTypeId.Geometry,
+                    SpecTypeId.Length
+                );
+                // 棚独自の板厚パラメータを作成
+                var pThkTop =
+                    FamilyParameterUtils.EnsureParam(
+                        doc,
+                        "Top Thickness",
+                        GroupTypeId.Geometry,
+                        SpecTypeId.Length
+                    );
+                var pThkSide =
+                    FamilyParameterUtils.EnsureParam(
+                        doc,
+                        "Side Thickness",
+                        GroupTypeId.Geometry,
+                        SpecTypeId.Length
+                    );
+                var pThkShelf =
+                    FamilyParameterUtils.EnsureParam(
+                        doc,
+                        "Shelf Thickness",
+                        GroupTypeId.Geometry,
+                        SpecTypeId.Length
+                    );
+                var pTopThk =
+                    FamilyParameterUtils.EnsureParam(
+                        doc,
+                        "Top Thickness",
+                        GroupTypeId.Geometry,
+                        SpecTypeId.Length
+                    );
+                // マテリアルパラメータを作成
+                var pTopMat =
+                    FamilyParameterUtils.EnsureMaterialParam(
                         doc,
                         "Top Material"
                     );
-                FamilyParameter pSideMat =
-                    EnsureMaterialParam(
-                        doc,
-                        "Side Material"
-                    );
-                FamilyParameter pShelfMat =
-                    EnsureMaterialParam(
-                        doc,
-                        "Shelf Material"
-                    );
+                var pSideMat = EnsureMaterialParam(
+                    doc,
+                    "Side Material"
+                );
+                var pShelfMat = EnsureMaterialParam(
+                    doc,
+                    "Shelf Material"
+                );
 
-                // (オプション: マテリアルが存在すればデフォルト値をセットする処理はここに記述)
-                // 今回は「紐付け」に集中します。
+                // パラメータに初期値をセット（mm→feet変換）
+                famMgr.Set(pW, specs!.Width / 304.8);
+                famMgr.Set(pD, specs!.Depth / 304.8);
+                famMgr.Set(pH, specs!.Height / 304.8);
+
+                famMgr.Set(
+                    pThkTop,
+                    specs.TopThickness / 304.8
+                );
+                famMgr.Set(
+                    pThkSide,
+                    specs.SideThickness / 304.8
+                );
+                famMgr.Set(
+                    pThkShelf,
+                    specs.ShelfThickness / 304.8
+                );
 
                 // 寸法変換
                 double width = specs!.Width / 304.8;

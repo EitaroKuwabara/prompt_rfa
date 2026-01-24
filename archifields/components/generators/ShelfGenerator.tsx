@@ -62,9 +62,9 @@ export function ShelfGenerator({onSuccess}: ShelfGeneratorProps) {
       <Card>
         <CardContent className="pt-6 space-y-4">
           <div className="space-y-2">
-            <Label>AI 設計アシスタント (棚)</Label>
+            <Label>AI Design Assistant (Shelf)</Label>
             <Textarea
-              placeholder="例: 文庫本用の木製の棚。高さは1500mmくらいで、棚板はガラスにして。"
+              placeholder="Example: A modern shelf with 4 shelves. The top is wood and the sides are wood. The shelves are wood."
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               rows={3}

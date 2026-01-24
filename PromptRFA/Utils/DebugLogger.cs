@@ -1,5 +1,8 @@
 // PromptRFA/Utils/DebugLogger.cs
+using System.Diagnostics;
+# if DEBUG
 using Autodesk.Revit.UI;
+# endif
 
 namespace PromptRFA.Utils
 {
@@ -17,10 +20,19 @@ namespace PromptRFA.Utils
             string message
         )
         {
+# if DEBUG
             if (IsEnabled)
             {
                 TaskDialog.Show(title, message);
             }
+            // 念のため出力ウィンドウにも出す
+            Debug.WriteLine($"[{title}] {message}");
+# else
+            // 本番環境の場合は何もしない
+            Console.WriteLine(
+                $"[PromptRFA Log] {title}: {message}"
+            );
+# endif
         }
     }
 }

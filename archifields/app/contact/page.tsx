@@ -50,11 +50,11 @@ export default function ContactPage() {
         setIsSuccess(true);
         setFormData({name: "", email: "", message: ""});
       } else {
-        alert("送信に失敗しました。時間をおいて再度お試しください。");
+        alert("Error: Failed to send message.");
       }
     } catch (error) {
       console.error("Error sending form:", error);
-      alert("エラーが発生しました。");
+      alert("Error: Failed to send message.");
     } finally {
       setIsSubmitting(false);
     }
