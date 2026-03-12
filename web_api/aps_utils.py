@@ -55,6 +55,7 @@ def ensure_bucket_exists(token):
 def upload_file_to_oss(token, file_path):
     """
     【重要】Direct-to-S3 方式でのアップロード (3ステップ)
+    アップロード後、OSSオブジェクトのファイル名を返す（署名付きURLではなくOSS URLで参照するため）
     """
     ensure_bucket_exists(token)
     filename = os.path.basename(file_path)
@@ -90,8 +91,8 @@ def upload_file_to_oss(token, file_path):
     )
     res_complete.raise_for_status()
 
-    # ダウンロード用URLを返却
-    return get_download_url(token, filename)
+    # ファイル名を返す（呼び出し元でOSS URLを構築する）
+    return filename
 
 
 def get_download_url(token, object_key):
@@ -147,8 +148,8 @@ def run_gen_on_cloud(json_path, template_path, output_path):
 
     # 1. 入力ファイルのアップロード (新方式)
     print("Uploading inputs...")
-    rvt_url = upload_file_to_oss(token, template_path)
-    json_url = upload_file_to_oss(token, json_path)
+    rvt_filename = upload_file_to_oss(token, template_path)
+    json_filename = upload_file_to_oss(token, json_path)
 
     # 2. 出力先の準備 (URLとキーを取得)
     output_filename = f"output_{int(time.time())}.rfa"
@@ -159,11 +160,20 @@ def run_gen_on_cloud(json_path, template_path, output_path):
 
     print("Starting WorkItem...")
     workitem_url = f"{BASE_URL}/da/us-east/v3/workitems"
+    auth_header = {"Authorization": f"Bearer {token}"}
     workitem_args = {
         "activityId": ACTIVITY_ID,
         "arguments": {
-            "rvtFile": {"url": rvt_url, "verb": "get"},
-            "inputJson": {"url": json_url, "verb": "get"},
+            "rvtFile": {
+                "url": f"{BASE_URL}/oss/v2/buckets/{BUCKET_KEY}/objects/{urllib.parse.quote(rvt_filename)}",
+                "headers": auth_header,
+                "verb": "get",
+            },
+            "inputJson": {
+                "url": f"{BASE_URL}/oss/v2/buckets/{BUCKET_KEY}/objects/{urllib.parse.quote(json_filename)}",
+                "headers": auth_header,
+                "verb": "get",
+            },
             "resultRfa": {"url": result_put_url, "verb": "put"},
         },
     }
@@ -196,7 +206,7 @@ def run_gen_on_cloud(json_path, template_path, output_path):
             report_url = status_data.get("reportUrl")
             print(f"📝 Autodesk Report Log: {report_url}")
             break
-        if status in ["failed", "cancelled", "failedInstructions"]:
+        if status in ["failed", "cancelled", "failedInstructions", "failedDownload", "failedUpload"]:
             print("Job Failed!")
             report_url = status_data.get("reportUrl")
             if report_url:
