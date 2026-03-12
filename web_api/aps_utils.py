@@ -210,8 +210,14 @@ def run_gen_on_cloud(json_path, template_path, output_path):
             print("Job Failed!")
             report_url = status_data.get("reportUrl")
             if report_url:
-                print("Report Log:", report_url)
-            raise RuntimeError("Cloud processing failed.")
+                try:
+                    report_res = requests.get(report_url, timeout=30)
+                    print("=== DA Report Log ===")
+                    print(report_res.text[:3000])
+                    print("=== End of Report ===")
+                except Exception as report_err:
+                    print(f"Report fetch failed: {report_err}")
+            raise RuntimeError(f"Cloud processing failed with status: {status}")
 
     # 4. 【重要】出力ファイルの完了通知を送る
     # これをやらないと、次のダウンロードで「ファイルがない」と言われる
