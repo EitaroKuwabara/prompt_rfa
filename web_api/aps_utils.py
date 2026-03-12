@@ -91,15 +91,15 @@ def upload_file_to_oss(token, file_path):
     )
     res_complete.raise_for_status()
 
-    # ファイル名を返す（呼び出し元でOSS URLを構築する）
-    return filename
+    # 署名付きダウンロードURLを返す（有効期限60分）
+    return get_download_url(token, filename)
 
 
 def get_download_url(token, object_key):
-    """ダウンロード用URLを取得"""
+    """ダウンロード用URLを取得 (有効期限60分)"""
     ensure_bucket_exists(token)
     safe_key = urllib.parse.quote(object_key)
-    url = f"{BASE_URL}/oss/v2/buckets/{BUCKET_KEY}/objects/{safe_key}/signeds3download"
+    url = f"{BASE_URL}/oss/v2/buckets/{BUCKET_KEY}/objects/{safe_key}/signeds3download?minutesExpiration=60"
     res = requests.get(
         url, headers={"Authorization": f"Bearer {token}"}, timeout=TIMEOUT
     )
@@ -146,10 +146,10 @@ def run_gen_on_cloud(json_path, template_path, output_path):
     print("--- Cloud Generation Started (New Flow) ---")
     token = get_token()
 
-    # 1. 入力ファイルのアップロード (新方式)
+    # 1. 入力ファイルのアップロード（署名付きダウンロードURL取得 有効期限60分）
     print("Uploading inputs...")
-    rvt_filename = upload_file_to_oss(token, template_path)
-    json_filename = upload_file_to_oss(token, json_path)
+    rvt_download_url = upload_file_to_oss(token, template_path)
+    json_download_url = upload_file_to_oss(token, json_path)
 
     # 2. 出力先の準備 (URLとキーを取得)
     output_filename = f"output_{int(time.time())}.rfa"
@@ -160,20 +160,11 @@ def run_gen_on_cloud(json_path, template_path, output_path):
 
     print("Starting WorkItem...")
     workitem_url = f"{BASE_URL}/da/us-east/v3/workitems"
-    auth_header = {"Authorization": f"Bearer {token}"}
     workitem_args = {
         "activityId": ACTIVITY_ID,
         "arguments": {
-            "rvtFile": {
-                "url": f"{BASE_URL}/oss/v2/buckets/{BUCKET_KEY}/objects/{urllib.parse.quote(rvt_filename)}",
-                "headers": auth_header,
-                "verb": "get",
-            },
-            "inputJson": {
-                "url": f"{BASE_URL}/oss/v2/buckets/{BUCKET_KEY}/objects/{urllib.parse.quote(json_filename)}",
-                "headers": auth_header,
-                "verb": "get",
-            },
+            "rvtFile": {"url": rvt_download_url, "verb": "get"},
+            "inputJson": {"url": json_download_url, "verb": "get"},
             "resultRfa": {"url": result_put_url, "verb": "put"},
         },
     }
